@@ -1,3 +1,0 @@
-/home/don40/QOV_GitHub/encode/CMakeFiles/encode.dir
-/home/don40/QOV_GitHub/encode/CMakeFiles/edit_cache.dir
-/home/don40/QOV_GitHub/encode/CMakeFiles/rebuild_cache.dir
