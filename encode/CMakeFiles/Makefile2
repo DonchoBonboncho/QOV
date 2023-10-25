@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/don40/QOV/code/encode
+CMAKE_SOURCE_DIR = /home/don40/QOV_GitHub/encode
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/don40/QOV/code/encode
+CMAKE_BINARY_DIR = /home/don40/QOV_GitHub/encode
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -81,14 +81,14 @@ clean: CMakeFiles/encode.dir/clean
 CMakeFiles/encode.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/encode.dir/build.make CMakeFiles/encode.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/encode.dir/build.make CMakeFiles/encode.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/don40/QOV/code/encode/CMakeFiles --progress-num=1,2 "Built target encode"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/don40/QOV_GitHub/encode/CMakeFiles --progress-num=1,2 "Built target encode"
 .PHONY : CMakeFiles/encode.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/encode.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/don40/QOV/code/encode/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/don40/QOV_GitHub/encode/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/encode.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/don40/QOV/code/encode/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/don40/QOV_GitHub/encode/CMakeFiles 0
 .PHONY : CMakeFiles/encode.dir/rule
 
 # Convenience name for target.

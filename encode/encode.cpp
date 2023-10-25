@@ -6,7 +6,17 @@
 #include <fstream>
 #include <chrono>
 
+#define out(x) #x << " = " << x << "  "
+
 using namespace cv;
+
+std::string getFramNum( int numFrame , int sz = 4 ){
+
+	std::string nas = std::to_string( numFrame );
+	while( nas.size() < sz ) nas = "0" + nas;
+
+	return nas;
+}
 
 int main(){
 
@@ -21,7 +31,16 @@ int main(){
 		return 1;
 	}
 
-	Mat img = imread("/home/don40/QOV/frames/0001.png", IMREAD_COLOR);
+
+	int numFrame = 42;
+	std::string pathPref = "../frames/";
+	std::string pathImgName = getFramNum( numFrame );
+	std::string pathSuff = ".png";
+	
+	std::string path = pathPref + pathImgName + pathSuff;
+	std::cerr << out( path ) << std::endl;
+	
+	Mat img = imread( path, IMREAD_COLOR);
 
     if(img.empty())
 	{
@@ -46,8 +65,6 @@ int main(){
 
 		}
 	}
-
-
 
 	fout.close();
 

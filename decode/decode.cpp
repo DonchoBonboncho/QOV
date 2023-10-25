@@ -24,10 +24,10 @@ int main(){
 	fin.read((char *)&currH, sizeof( currH ) );
 	fin.read((char *)&currW, sizeof( currW ) );
 
-	std::cerr << " ! " << currH << " " << currW << std::endl;
+	//std::cerr << " ! " << currH << " " << currW << std::endl;
 
-	//std::cout << "P3" << std::endl;
-	//std::cout << currW << " " << currH << " 255 " << std::endl;
+	std::cout << "P3" << std::endl;
+	std::cout << currW << " " << currH << " 255 " << std::endl;
 
 	for( int i=0 ; i < currH ; i++ ){
 		for( int j=0 ; j < currW ; j++ ){
@@ -44,6 +44,8 @@ int main(){
 				fin.read( (char * )&currG, sizeof( currG ) );
 				int currB;
 				fin.read( (char * )&currB, sizeof( currB ) );
+
+				std::cout << currR << " " << currG << " " << currB << std::endl; 
 			}
 		}
 	}

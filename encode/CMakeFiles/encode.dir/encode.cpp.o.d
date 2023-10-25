@@ -1,5 +1,5 @@
 CMakeFiles/encode.dir/encode.cpp.o: \
- /home/don40/QOV/code/encode/encode.cpp /usr/include/stdc-predef.h \
+ /home/don40/QOV_GitHub/encode/encode.cpp /usr/include/stdc-predef.h \
  /usr/local/include/opencv4/opencv2/core.hpp \
  /usr/local/include/opencv4/opencv2/core/cvdef.h \
  /usr/local/include/opencv4/opencv2/core/version.hpp \
