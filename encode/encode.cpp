@@ -1,3 +1,16 @@
+/*
+
+	OPERATIONS:
+
+	_ _ _ | _ _ _ _ _
+	TYPE     INFO
+
+	1 1 1 1 1 1 1 1 + 3 B - new 
+	0 0 1 | _ _ _ _ _	  - index
+	0 1 0 | _ _ _ _ _     - diff up
+	0 1 1 | _ _ _ _ _     - diff left
+
+*/
 #include <opencv2/core.hpp>
 #include <opencv2/core/matx.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -10,6 +23,67 @@
 
 using namespace cv;
 
+const int MAX_FRAME_H = 1080;
+const int MAX_FRAME_W = 1920;
+
+class Pixel{
+	private:
+
+	int r;
+	int g;
+	int b;
+
+	public:
+
+	void setRGB( int _r, int _g, int _b ){
+		r = _r;
+		g = _g;
+		b = _b;
+	}
+
+	const int& getR( ) const{
+		return r;
+	}
+
+	const int& getG( ) const{
+		return g;
+	}
+
+	const int& getB( ) const{
+		return b;
+	}
+
+};
+
+class Frame{
+	private:
+
+	int ind;
+	int FrameH, FrameW;
+	Pixel** pixels;
+
+	public:
+
+	Frame( int H, int W ){
+		FrameH = H;
+		FrameW = W;
+		init();
+	}
+
+	void init( ){
+		pixels = new Pixel* [FrameH];
+		for( int i=0 ; i < FrameH ; i++ ) pixels[i] = new Pixel [FrameW];
+	}
+
+	void setPixelVal( const int& r, const int& b, const int& g, const int& x, const int& y ){
+		pixels[x][y].setRGB( r, g, b );
+	}
+
+};
+
+
+
+
 std::string getFramNum( int numFrame , int sz = 4 ){
 
 	std::string nas = std::to_string( numFrame );
@@ -18,8 +92,11 @@ std::string getFramNum( int numFrame , int sz = 4 ){
 	return nas;
 }
 
+
 int main(){
 
+	//Pixel a;
+	//a.setRGB( 23, 42, 69 );
 #ifdef TIME
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
@@ -47,16 +124,21 @@ int main(){
 		return 1;
 	}
 
-	fout.write( (char *)&img.rows, sizeof( img.rows ) );
-	fout.write( (char *)&img.cols, sizeof( img.cols ) );
+	const int IMG_H = img.rows;
+	const int IMG_W = img.cols;
+	fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
+	fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
 
-	for(int i=0; i<img.rows; i++) {
-		for(int j=0; j<img.cols; j++) {
+	Frame currFrame( IMG_H, IMG_W );
+	for(int i=0; i < IMG_H ; i++) {
+		for(int j=0; j < IMG_W; j++) {
 
 			int b = img.at< cv::Vec3b>( i, j )[0];
 			int g = img.at< cv::Vec3b>( i, j )[1];
 			int r = img.at< cv::Vec3b>( i, j )[2];
 
+			currFrame.setPixelVal( r, g, b, i, j );
+			
 			int type = 9;
 			fout.write( (char*) &type, sizeof( type ) );
 			fout.write( (char*) &r, sizeof( r ) );
