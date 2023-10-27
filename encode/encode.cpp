@@ -95,8 +95,6 @@ std::string getFramNum( int numFrame , int sz = 4 ){
 
 int main(){
 
-	//Pixel a;
-	//a.setRGB( 23, 42, 69 );
 #ifdef TIME
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
@@ -139,7 +137,9 @@ int main(){
 
 			currFrame.setPixelVal( r, g, b, i, j );
 			
-			int type = 9;
+			//uint8_t type = 
+			//int type = ( 1 << 9 ) -1;
+			std::cerr << out( type ) << std::endl;
 			fout.write( (char*) &type, sizeof( type ) );
 			fout.write( (char*) &r, sizeof( r ) );
 			fout.write( (char*) &g, sizeof( g ) );
