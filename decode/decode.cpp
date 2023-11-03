@@ -1,3 +1,6 @@
+#include "../QOV.h"
+// frame and pixel classes + ...
+
 #include <opencv2/core.hpp>
 #include <opencv2/core/matx.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -44,8 +47,11 @@ int main(){
 	for( int i=0 ; i < currH ; i++ ){
 		for( int j=0 ; j < currW ; j++ ){
 
+			std::cerr << out( i ) << out( j ) << std::endl << std::endl;
+
 			if( runNum ){
-				//std::cout << prevR << " " << prevG << " " << prevB << std::endl;
+				std::cout << prevR << " " << prevG << " " << prevB << std::endl;
+				std::cerr << "oste run " << out( runNum ) << std::endl;
 				runNum --;
 				continue;
 			}
@@ -53,22 +59,24 @@ int main(){
 			int currR, currB, currG;
 
 			int info;
-			//uint8_t info;
 			fin.read( (char*) &info, sizeof( info ) );
-			int type = info >> 5;
-			std::cout << type << std::endl;
+			std::cerr << out( info ) << inBinary( info ) << std::endl;
+
+			int cpInfo = info;
+			int type = cpInfo >> 5;
+			std::cerr << out( type ) << std::endl;
 			//std::cerr << out( type ) << std::endl;
 			if( type == 5 ){
-				runNum = info | ( ( 1 << 6 ) -1 ); // last 5 bits
-				std::cerr << out( runNum ) << std::endl;
-				//std::cout << prevR << " " << prevG << " " << prevB << std::endl;
+				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
+				std::cerr << out( runNum ) << inBinary( ( 1 << 6 ) -1 ) << std::endl;
+				std::cout << prevR << " " << prevG << " " << prevB << std::endl;
 				runNum --;
 				continue;
 			}
 			if( type == 1 ){
-				int dx = info | ( ( 1 << 6 ) -1 );
-				dx -= 15;
-				currR = prevR + dx;
+				int dr = info & ( ( 1 << 5 ) -1 );
+				dr -= 15;
+				currR = prevR - dr;
 
 				int info2;
 				//uint8_t info2;
@@ -76,11 +84,13 @@ int main(){
 
 				int dg = ( info2 >> 4 );
 				dg -= 7;
-				currG = prevG + dg;
+				currG = prevG - dg;
 
-				int db = info2 | ( ( 1 << 5 ) -1 );
+				int db = info2 & ( ( 1 << 4 ) -1 );
 				db -= 7;
-				currB = prevB + db;
+				currB = prevB - db;
+
+				std::cerr << out( dr ) << out( dg ) << out( db ) << std::endl;
 			}
 				
 			if( type == 2 ){
@@ -93,6 +103,8 @@ int main(){
 
 			if( type == 3 ){
 
+				std::cerr << " new " << std::endl;
+
 				int _r, _g, _b;
 				//uint8_t _r, _g, _b;
 				fin.read( (char*) &_r, sizeof( _r ) );
@@ -101,6 +113,8 @@ int main(){
 				currG = _g;
 				fin.read( (char*) &_b, sizeof( _b ) );
 				currB = _b;
+
+				std::cerr << out( currR ) << out( currG ) << out( currB ) << std::endl;
 
 				int currHash = ( currR * 3 + currG * 5 + currB * 7 ) % modHash;
 				if( hashTable[currHash] == 0 ){
@@ -111,6 +125,8 @@ int main(){
 				}
 
 			}
+
+			std::cout << currR << " " << currG << " " << currB << std::endl;
 
 			prevR = currR;
 			prevG = currG;

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project( qov )
 find_package( OpenCV REQUIRED )
+add_definitions( -DSMALL_TEST )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 add_executable( encode.exe ./encode/encode.cpp )
 add_executable( decode.exe ./decode/decode.cpp )

@@ -2,15 +2,15 @@
 
 	OPERATIONS:
 
-	_ _ _ | _ _ _ _ _
-	TYPE     INFO
-
-	1 1 1 1 1 1 1 1 + 3 B - new 
-	0 0 1 | _ _ _ _ _	  - index
-	0 1 0 | _ _ _ _ _     - diff up
-	0 1 1 | _ _ _ _ _     - diff left
+	0 0 0 | _ _ _ _ _		- run
+	0 0 1 | _ _ _ _ _ x2	- diff
+	0 1 0 | _ _ _ _ _ 		- hash table ind
+	0 1 1 | _ _ _ _ _ x2	- new
 
 */
+#include "../QOV.h"
+// frame and pixel class + some functions
+
 #include <opencv2/core.hpp>
 #include <opencv2/core/matx.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -31,96 +31,7 @@ const int modHash = 32;
 int hashTable[modHash];
 int numHash = 1;
 
-class Pixel{
-	private:
-
-	int r;
-	int g;
-	int b;
-
-	public:
-
-	Pixel( ){
-		r = b = g = 0;
-	}
-  
-  	Pixel( int _r, int _g, int _b ){
-  		r = _r;
-  		g = _g;
-  		b = _b;
-  	}
-
-	void setRGB( int _r, int _g, int _b ){
-		r = _r;
-		g = _g;
-		b = _b;
-	}
-
-	// getters
-	const int& getR( ) const{
-		return r;
-	}
-
-	const int& getG( ) const{
-		return g;
-	}
-
-	const int& getB( ) const{
-		return b;
-	}
-
-	bool operator ==( const Pixel& currP ){
-		if( r != currP.r ) return false;
-		if( g != currP.g ) return false;
-		if( b != currP.b ) return false;
-		return true;
-	}
-
-};
-
 Pixel valHash[modHash];
-
-class Frame{
-	private:
-
-	int ind;
-	int FrameH, FrameW;
-	Pixel** pixels;
-
-	public:
-
-	Frame( int H, int W ){
-		FrameH = H;
-		FrameW = W;
-		init();
-	}
-
-	void init( ){
-		pixels = new Pixel* [FrameH];
-		for( int i=0 ; i < FrameH ; i++ ) pixels[i] = new Pixel [FrameW];
-	}
-
-	void setPixelPixel( const Pixel& p, const int& x, const int& y ){
-		pixels[x][y] = p;
-	}
-
-	void setPixelRGB( const int& r, const int& b, const int& g, const int& x, const int& y ){
-		pixels[x][y].setRGB( r, g, b );
-	}
-
-};
-
-
-
-
-std::string getFramNum( int numFrame , int sz = 4 ){
-
-	std::string nas = std::to_string( numFrame );
-	while( nas.size() < sz ) nas = "0" + nas;
-
-	return nas;
-}
-
 
 int main(){
 
@@ -151,43 +62,64 @@ int main(){
 		return 1;
 	}
 
+#ifdef SMALL_TEST
+
+	int smallH = 5;
+	int smallW = 4;
+	Frame smallFrame( smallH, smallW );
+	for( int i=0 ; i < smallH ; i++ ){
+		for( int j=0 ; j < smallW ; j++ ){
+			Pixel curr( i, i, i );
+			smallFrame.setPixelPixel( curr, i, j );
+		}
+	}
+
+#endif
+
 	const int IMG_H = img.rows;
 	const int IMG_W = img.cols;
-	fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
-	fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
+	fout.write( (char *)&smallH, sizeof( smallH ) );
+	fout.write( (char *)&smallW, sizeof( smallW ) );
+	//fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
+	//fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
 
 	Frame currFrame( IMG_H, IMG_W );
-	Pixel prev;
+	Pixel prev( 12345, 12345, 12345 );
 	int cntRun = 0;
-	for(int i=0; i < IMG_H ; i++) {
-		for(int j=0; j < IMG_W; j++) {
+//	for(int i=0; i < IMG_H ; i++) {
+//		for(int j=0; j < IMG_W; j++) {
+	std::cerr << out( smallH ) << out( smallW ) << std::endl;
+	for(int i=0; i < smallH ; i++) {
+		for(int j=0; j < smallW; j++) {
 
-			int b = img.at< cv::Vec3b>( i, j )[0];
-			int g = img.at< cv::Vec3b>( i, j )[1];
-			int r = img.at< cv::Vec3b>( i, j )[2];
+//			int b = img.at< cv::Vec3b>( i, j )[0];
+//			int g = img.at< cv::Vec3b>( i, j )[1];
+//			int r = img.at< cv::Vec3b>( i, j )[2];
 
-			Pixel curr( r, g, b );
+//			Pixel curr( r, g, b );
+			Pixel curr = smallFrame.getPixel( i, j );
+			std::cerr << curr.getR() << " " << curr.getG() << " " << curr.getB() << std::endl;
 
 			currFrame.setPixelPixel( curr, i, j );
 
 
 			//run operation
 			// 0 0 0 | _ _ _ _ _
-			if( ( i || j ) and ( i != IMG_H and j != IMG_W ) and curr == prev ){
+			if( ( i || j ) and curr == prev ){
 				cntRun ++;
-				if( cntRun < ( 1 << 6 )-1 ) continue;
+				if( cntRun < ( 1 << 5 )-1 and !( i == smallH-1 and j == smallW-1 ) ) continue;
 			}
 			if( cntRun ){
 				int type = 5;
+				std::cout << type << " run " << std::endl;
 				int info;
 				//uint8_t info;
 				info = ( type << 5 );
 				info |= cntRun;
 				std::cerr << out( cntRun ) << std::endl;
+				std::cout << out( info ) << inBinary( info ) << std::endl;
 				cntRun = 0;
 				fout.write( (char*) &info, sizeof( info ) );
-				std::cout << 0 << std::endl;
-
 				if( curr == prev ) continue;
 			}
 
@@ -214,11 +146,15 @@ int main(){
 
 				fout.write( (char * ) &info1, sizeof( info1 ) );
 				fout.write( (char * ) &info2, sizeof( info2 ) );
+				std::cout << out( dr ) << out( dg ) << out( db ) << std::endl;
 
-				std::cout << 1 << std::endl;
+				std::cout << 1 << " diff " << std::endl;
+				std::cout << inBinary( info1 ) << " " << inBinary( info2 ) << std::endl;
 				prev = curr;
 				continue;
 			}
+
+			/*
 
 			// hash
 			// 0 1 0 | _ _ _ _ _
@@ -238,6 +174,7 @@ int main(){
 				std::cout << 2 << std::endl;
 				continue;
 			}
+			*/
 
 
 			int type = 3;
@@ -249,18 +186,22 @@ int main(){
 			int infoR = curr.getR();
 			int infoG = curr.getG();
 			int infoB = curr.getB();
+
+			std::cout << type << " new " << std::endl;
+			std::cout << inBinary( infoType ) << std::endl;
+			std::cout << out( infoR ) << out( infoG ) << out( infoB ) << std::endl;
+			std::cout << inBinary( infoR ) << " " << inBinary( infoG ) << " " << inBinary( infoB ) << std::endl;
 			
 			fout.write( (char *) &infoType, sizeof( infoType ) );
 			fout.write( (char *) &infoR, sizeof( infoR ) );
 			fout.write( (char *) &infoG, sizeof( infoG ) );
 			fout.write( (char *) &infoB, sizeof( infoB ) );
 
-			if( numHash < modHash ){
-				hashTable[ currHash ] = numHash ++;
-				valHash[ currHash ] = curr;
-			}
+//			if( numHash < modHash ){
+//				hashTable[ currHash ] = numHash ++;
+//				valHash[ currHash ] = curr;
+//			}
 
-			std::cout << 3 << std::endl;
 			prev = curr;
 		}
 	}
