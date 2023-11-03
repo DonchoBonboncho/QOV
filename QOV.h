@@ -81,6 +81,13 @@ class Frame{
 		pixels[x][y].setRGB( r, g, b );
 	}
 
+	~Frame(){
+		for( int i=0 ; i<FrameH ; i++ ){
+			delete pixels[i];
+		}
+		delete[] pixels;
+	}
+
 };
 
 std::string inBinary( int curr ){
