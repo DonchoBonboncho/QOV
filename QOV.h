@@ -21,9 +21,27 @@ class Pixel{
   		b = _b;
   	}
 
+	// setters
 	void setRGB( int _r, int _g, int _b ){
 		r = _r;
 		g = _g;
+		b = _b;
+	}
+
+	void setPixel( const Pixel& a ){
+		r = a.r;
+		g = a.g;
+		b = a.b;
+	}
+
+	void setR( int _r ){
+		r = _r;
+	}
+
+	void setG( int _g ){
+		g = _g;
+	}
+	void setB( int _b ){
 		b = _b;
 	}
 
@@ -45,6 +63,10 @@ class Pixel{
 		if( g != currP.g ) return false;
 		if( b != currP.b ) return false;
 		return true;
+	}
+
+	void print( std::ostream& os )const{
+		os << r << " " << g << " " << b << std::endl;
 	}
 
 };
