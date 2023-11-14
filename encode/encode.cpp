@@ -1,11 +1,12 @@
 /*
-
+hashVal
 	OPERATIONS:
 
 	0 0 0 | _ _ _ _ _		- run
 	0 0 1 | _ _ _ _ _ x2	- diff
 	0 1 0 | _ _ _ _ _ 		- hash table ind
-	0 1 1 | _ _ _ _ _ x2	- new
+	0 1 1 | _ _ _ _ _ x4	- new
+	1 0 0 | _ _ _ _ _		- prev frame
 
 */
 #include "../QOV.h"
@@ -27,47 +28,43 @@ const int MAX_FRAME_H = 1080;
 const int MAX_FRAME_W = 1920;
 const int modHash = 32;
 
+int IMG_H;
+int IMG_W;
+
 int hashTable[modHash];
 bool hashViz[modHash];
 int numHash = 0;
 
 Pixel valHash[modHash];
 
-int main(){
+std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary);
+Frame prevFrame;
 
-#ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-#endif
+bool firstTime = true;
+void encodeFrame( int numCurrFrame ){
 
-	std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary);
-
-	if(!fout) {
-		std::cout << "Ne moga da otvorq OUTPUT faila" << std::endl;
-		return 1;
-	}
-
-
-	int numFrame = 42;
 	std::string pathPref = "../frames/";
-	std::string pathImgName = getFramNum( numFrame );
+	std::string pathImgName = getFramNum( numCurrFrame );
 	std::string pathSuff = ".png";
 	
 	std::string path = pathPref + pathImgName + pathSuff;
+
 	std::cerr << out( path ) << std::endl;
 	
 	Mat img = imread( path, IMREAD_COLOR);
 
     if(img.empty())
 	{
-		return 1;
+		std::cerr << " can't open the image " << std::endl;
+		return;
 	}
 
 	std::srand( 74 );
 
 #ifdef SMALL_TEST
 
-	int smallH = 1000;
-	int smallW = 1000;
+	int smallH = 2000;
+	int smallW = 2000;
 	Frame smallFrame( smallH, smallW );
 	for( int i=0 ; i < smallH ; i++ ){
 		for( int j=0 ; j < smallW ; j++ ){
@@ -82,32 +79,34 @@ int main(){
 		}
 	}
 
-	fout.write( (char *)&smallH, sizeof( smallH ) );
-	fout.write( (char *)&smallW, sizeof( smallW ) );
+	IMG_H = smallH;
+	IMG_W = smallW;
+
+#else
+
+	IMG_H = img.cols;
+	IMG_W = img.rows;
 
 #endif
 
-	const int IMG_H = img.rows;
-	const int IMG_W = img.cols;
-	std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
-#ifndef SMALL_TEST
-	fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
-	fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
-#endif
+	if( firstTime ){
+		firstTime = false;
+		fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
+		fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
+		std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
+	}
 
 	Frame currFrame( IMG_H, IMG_W );
 	Pixel prev( 12345, 12345, 12345 );
 	int cntRun = 0;
 	
-	for( int i=0 ; i < modHash ; i++ ) valHash[i] = Pixel();
+	for( int i=0 ; i < modHash ; i++ ){
+		valHash[i].reset();
+		hashViz[i] = false;
+	}
 
-#ifdef SMALL_TEST 
-	for(int i=0; i < smallH ; i++) {
-		for(int j=0; j < smallW; j++) {
-#else
 	for(int i=0; i < IMG_H ; i++) {
 		for(int j=0; j < IMG_W; j++) {
-#endif
 
 #ifdef SMALL_TEST
 			Pixel curr = smallFrame.getPixel( i, j );
@@ -134,7 +133,7 @@ int main(){
 #endif
 			}
 			if( cntRun ){
-				int type = 5;
+				int type = 0;
 				int info;
 				info = ( type << 5 );
 				info |= cntRun;
@@ -172,7 +171,7 @@ int main(){
 			// hash
 			// 0 1 0 | _ _ _ _ _
 			int currHash = ( curr.getR() * 3 + curr.getG() * 5 + curr.getB() * 7 ) % modHash;
-			if( !hashViz[currHash] and valHash[currHash] == curr ){
+			if( valHash[currHash] == Pixel() and valHash[currHash] == curr ){
 				hashViz[currHash] = true;
 
 				int currInd = hashTable[ currHash];
@@ -182,11 +181,52 @@ int main(){
 				info  = ( type << 5 );
 				info |= currInd;
 
-				fout.write( (char * ) & info, sizeof( info ) );
+				fout.write( (char *) & info, sizeof( info ) );
 
 				prev = curr;
 				continue;
 			}
+
+			if( false and numCurrFrame > 1 ){
+				// prev frame
+				// _ _ _ | _  _ _ _ _
+				//  type  r/u   dist 
+
+				bool oke = false;
+				for( int r=0 ; r < (1 << 4) ; r++){
+					if( i - r < 0 ) break;
+					if( prevFrame.getPixel( i - r, j ) == curr.getPixel() ){
+						int type = 7;
+
+						int info = ( type << 5 );
+						info |= ( 1 << 4 );
+						info |= r;
+
+						std::cerr << " r " << out( info ) << inBinary( info ) << std::endl;
+
+						fout.write( (char*)&info, sizeof( info ) );
+						oke = true;
+					}
+				}
+
+				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
+					if( j - c < 0 ) break;
+					if( prevFrame.getPixel( i, j - c ) == curr.getPixel() ){
+
+						int type = 7;
+						
+						int info = ( type << 5 );
+						info |= c;
+
+						std::cerr << " c " << out( info ) << out( c ) << inBinary( info ) << std::endl;
+
+						fout.write( (char*)&info, sizeof( info ) );
+						oke = true;
+					}
+				}
+
+			}
+
 
 			int type = 3;
 			int infoType = ( type << 5 );
@@ -199,14 +239,35 @@ int main(){
 			fout.write( (char *) &infoG, sizeof( infoG ) );
 			fout.write( (char *) &infoB, sizeof( infoB ) );
 
-  			if( valHash[currHash] == Pixel() and numHash < modHash ){
+  			if( !hashViz[currHash] and numHash < modHash ){
   				valHash[ currHash ] = curr;
   				hashTable[ currHash ] = numHash ++;
   			}
 
 			prev = curr;
+			//currFrame.setPixelPixel( curr, i, j );
 		}
 	}
+
+	//prevFrame.setFrame( currFrame );
+}
+
+int main(){
+
+#ifdef TIME
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+#endif
+
+	int numFrames = 1;
+	fout.write( (char*)&numFrames, sizeof( numFrames ) );
+
+	for( int i=1 ; i <= numFrames ; i++ ){
+		encodeFrame( i );
+	}
+
+	//  	numFrames = 1;
+	//  	fout.write( (char*)&numFrames, sizeof( numFrames ) );
+	//  	encodeFrame( 2 );
 
 	fout.close();
 

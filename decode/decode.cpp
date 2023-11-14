@@ -19,29 +19,26 @@ int hashTable[modHash];
 Pixel hashVal[modHash];
 
 bool vizHash[modHash];
-int valHashR[modHash];
-int valHashG[modHash];
-int valHashB[modHash];
 
-int main(){
+std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
 
-#ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-#endif
+//Frame prevFrame;
+int currH, currW;
+void decode( int numCurrFrame ){
 
-	std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
-	if( !fin ){
-		std::cerr << " nqma otvarqne " << std::endl;
-		return 1;
-	}
+	std::cerr << out( numCurrFrame ) << std::endl;
 
-	int currH, currW;
-	fin.read((char *)&currH, sizeof( currH ) );
-	fin.read((char *)&currW, sizeof( currW ) );
 
 	int runNum = 0;
 	int numHash = 0;
 	Pixel prevPixel( 1234, 1234, 1234 );
+  	for( int i = 0 ; i < modHash ; i++ ){
+  		hashVal[i].reset();
+  		vizHash[i] = false;
+  	}
+
+	//Frame currFrame( currH, currW );
+
 	for( int i=0 ; i < currH ; i++ ){
 		for( int j=0 ; j < currW ; j++ ){
 
@@ -54,14 +51,12 @@ int main(){
 				continue;
 			}
 
-			int currR, currB, currG;
-
 			int info;
 			fin.read( (char*) &info, sizeof( info ) );
 
 			int cpInfo = info;
 			int type = cpInfo >> 5;
-			if( type == 5 ){
+			if( type == 0 ){
 				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
 				prevPixel.print( std::cout );
 				runNum --;
@@ -89,6 +84,21 @@ int main(){
 				newPixel.setPixel( hashVal[currHashInd] );
 			}
 
+
+			if( type == 7 ){
+				std::cerr << out( type ) << std::endl;
+				bool rows = ( 1 >> 4 ) & 1;
+
+				int dist = info & ( 1 << 4 ) -1;
+				if( rows ){
+					//newPixel.setPixel( prevFrame.getPixel( i-dist, j ) );
+				}else{
+					//newPixel.setPixel( prevFrame.getPixel( i, j - dist ) );
+				}
+			}
+					
+
+
 			if( type == 3 ){
 
 				int _r, _g, _b;
@@ -114,13 +124,32 @@ int main(){
 			newPixel.print( std::cout );
 
 			prevPixel.setPixel( newPixel );
+
+			//currFrame.setPixelPixel( newPixel.getPixel(), i, j );
 		}
 	}
 
-	fin.close();
-	if( !fin.good() ){
-		std::cerr << " bruhmomento " << std::endl;
-		return 1;
+	//prevFrame.setFrame( currFrame );
+
+}
+int main(){
+
+#ifdef TIME
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+#endif
+
+	int numFrames;
+	fin.read( (char*)&numFrames, sizeof( numFrames ) );
+
+	std::cerr << out( numFrames ) << std::endl;
+
+	fin.read((char *)&currH, sizeof( currH ) );
+	fin.read((char *)&currW, sizeof( currW ) );
+
+	std::cerr << out( currH ) << out( currW ) << std::endl;
+
+	for( int i=1 ; i <= numFrames ; i++ ){
+		decode( i );
 	}
 
 
