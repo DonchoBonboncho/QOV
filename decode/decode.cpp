@@ -56,7 +56,7 @@ void decode( int numCurrFrame ){
 
 			int cpInfo = info;
 			int type = cpInfo >> 5;
-			if( type == 0 ){
+			if( type == 5 ){
 				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
 				prevPixel.print( std::cout );
 				runNum --;

@@ -111,7 +111,7 @@ class Frame{
 	}
 
 	void setPixelPixel( const Pixel& p, int x, int y ){
-		pixels[x][y] = p;
+		pixels[x][y].setPixel( p.getPixel() );
 	}
 
 	void setPixelRGB( int r, int b, int g, int x, int y ){

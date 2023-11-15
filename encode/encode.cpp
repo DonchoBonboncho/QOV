@@ -59,20 +59,18 @@ void encodeFrame( int numCurrFrame ){
 		return;
 	}
 
-	std::srand( 74 );
-
 #ifdef SMALL_TEST
 
-	int smallH = 2000;
-	int smallW = 2000;
+	int smallH = 1000;
+	int smallW = 1000;
 	Frame smallFrame( smallH, smallW );
 	for( int i=0 ; i < smallH ; i++ ){
 		for( int j=0 ; j < smallW ; j++ ){
-			int currR = i + rand();
+			int currR = i + ( rand() % ( i+1 ) );
 			currR %= 256;
-			int currG = i + rand();
+			int currG = i + ( rand() % ( i+1 ) );
 			currG %= 256;
-			int currB = i + rand();
+			int currB = i + ( rand() % ( i+1 ) );
 			currB %= 256;
 			Pixel curr( currR, currG, currB );
 			smallFrame.setPixelPixel( curr, i, j );
@@ -133,7 +131,7 @@ void encodeFrame( int numCurrFrame ){
 #endif
 			}
 			if( cntRun ){
-				int type = 0;
+				int type = 5;
 				int info;
 				info = ( type << 5 );
 				info |= cntRun;
@@ -174,7 +172,7 @@ void encodeFrame( int numCurrFrame ){
 			if( valHash[currHash] == Pixel() and valHash[currHash] == curr ){
 				hashViz[currHash] = true;
 
-				int currInd = hashTable[ currHash];
+				int currInd = hashTable[ currHash ];
 				int type = 2;
 
 				int info = 0;
@@ -258,9 +256,12 @@ int main(){
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
 
+	std::srand( 74 );
+
 	int numFrames = 1;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
+	firstTime = true;
 	for( int i=1 ; i <= numFrames ; i++ ){
 		encodeFrame( i );
 	}
