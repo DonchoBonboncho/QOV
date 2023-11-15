@@ -152,41 +152,15 @@ int main(){
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
 
-	if( !fin ){
-		std::cerr << " nqma otvarqne " << std::endl;
-		return 1;
-	}
-
-	int numFrames = -1;
-
-	fin.read( (char*)&numFrames, sizeof( numFrames ) );
-
-	fin.read((char *)&IMG_H, sizeof( IMG_H ) );
-	fin.read((char *)&IMG_W, sizeof( IMG_W ) );
-
-	for( int i=1 ; i <= numFrames ; i ++ ){
-		decode( i );
-	}
-
-
-	//prevFrame.setFrame( currFrame );
-
-}
-int main(){
-
-#ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-#endif
-
 	int numFrames;
 	fin.read( (char*)&numFrames, sizeof( numFrames ) );
 
 	std::cerr << out( numFrames ) << std::endl;
 
-	fin.read((char *)&currH, sizeof( currH ) );
-	fin.read((char *)&currW, sizeof( currW ) );
+	fin.read((char *)&IMG_H, sizeof( IMG_H ) );
+	fin.read((char *)&IMG_W, sizeof( IMG_W ) );
 
-	std::cerr << out( currH ) << out( currW ) << std::endl;
+	std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
 
 	for( int i=1 ; i <= numFrames ; i++ ){
 		decode( i );

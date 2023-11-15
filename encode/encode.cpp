@@ -28,9 +28,6 @@ const int MAX_FRAME_H = 1080;
 const int MAX_FRAME_W = 1920;
 const int modHash = 32;
 
-int IMG_H;
-int IMG_W;
-
 int hashTable[modHash];
 bool hashViz[modHash];
 int numHash = 0;
@@ -240,7 +237,7 @@ void encode( int numCurrFrame ){
 				bool oke = false;
 				for( int r=0 ; r < (1 << 4) ; r++){
 					if( i - r < 0 ) break;
-					if( prevFrame.getPixel( i - r, j ) == curr.getPixel() ){
+					if( prevFrame.getPixel( i - r, j ) == currPixel.getPixel() ){
 						int type = 7;
 
 						int info = ( type << 5 );
@@ -256,7 +253,7 @@ void encode( int numCurrFrame ){
 
 				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
 					if( j - c < 0 ) break;
-					if( prevFrame.getPixel( i, j - c ) == curr.getPixel() ){
+					if( prevFrame.getPixel( i, j - c ) == currPixel.getPixel() ){
 
 						int type = 7;
 						
@@ -303,34 +300,14 @@ int main(){
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
 
+	std::srand( 69 );
 
-
-	srand( 69 );
-	int numFrames = 4;
-
-	fout.write( (char*)&numFrames, sizeof( numFrames ) );
-
-	for( int i=1 ; i <= numFrames ; i++ ){
-		encode( i );
-	}
-
-	//prevFrame.setFrame( currFrame );
-}
-
-int main(){
-
-#ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-#endif
-
-	std::srand( 74 );
-
-	int numFrames = 1;
+	int numFrames = 2;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
 	firstTime = true;
 	for( int i=1 ; i <= numFrames ; i++ ){
-		encodeFrame( i );
+		encode( i );
 	}
 
 	//  	numFrames = 1;
