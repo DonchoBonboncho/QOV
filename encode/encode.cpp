@@ -37,11 +37,16 @@ int numHash = 0;
 
 Pixel valHash[modHash];
 
+int IMG_H;
+int IMG_W;
+
 std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary);
-Frame prevFrame;
 
 bool firstTime = true;
-void encodeFrame( int numCurrFrame ){
+
+Frame prevFrame;
+
+void encode( int numCurrFrame ){
 
 	std::string pathPref = "../frames/";
 	std::string pathImgName = getFramNum( numCurrFrame );
@@ -53,10 +58,9 @@ void encodeFrame( int numCurrFrame ){
 	
 	Mat img = imread( path, IMREAD_COLOR);
 
-    if(img.empty())
-	{
+    if(img.empty()) {
 		std::cerr << " can't open the image " << std::endl;
-		return;
+		return ;
 	}
 
 #ifdef SMALL_TEST
@@ -72,8 +76,8 @@ void encodeFrame( int numCurrFrame ){
 			currG %= 256;
 			int currB = i + ( rand() % ( i+1 ) );
 			currB %= 256;
-			Pixel curr( currR, currG, currB );
-			smallFrame.setPixelPixel( curr, i, j );
+			Pixel currPixel( currR, currG, currB );
+			smallFrame.setPixelPixel( currPixel, i, j );
 		}
 	}
 
@@ -82,13 +86,13 @@ void encodeFrame( int numCurrFrame ){
 
 #else
 
-	IMG_H = img.cols;
+	IMG_H = img.rows;
 	IMG_W = img.rows;
 
 #endif
 
 	if( firstTime ){
-		firstTime = false;
+
 		fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
 		fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
 		std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
@@ -97,6 +101,11 @@ void encodeFrame( int numCurrFrame ){
 	Frame currFrame( IMG_H, IMG_W );
 	Pixel prev( 12345, 12345, 12345 );
 	int cntRun = 0;
+
+	for( int i=0 ; i < modHash ; i++ ){
+		hashViz[i] = false;
+		valHash[i].reset();
+	}
 	
 	for( int i=0 ; i < modHash ; i++ ){
 		valHash[i].reset();
@@ -107,22 +116,20 @@ void encodeFrame( int numCurrFrame ){
 		for(int j=0; j < IMG_W; j++) {
 
 #ifdef SMALL_TEST
-			Pixel curr = smallFrame.getPixel( i, j );
+			Pixel currPixel = smallFrame.getPixel( i, j );
 #else
 			int b = img.at< cv::Vec3b>( i, j )[0];
   			int g = img.at< cv::Vec3b>( i, j )[1];
   			int r = img.at< cv::Vec3b>( i, j )[2];
 
-  			Pixel curr( r, g, b );
+  			Pixel currPixel( r, g, b );
 #endif
-			std::cout << curr.getR() << " " << curr.getG() << " " << curr.getB() << std::endl;
-
-			currFrame.setPixelPixel( curr, i, j );
-
+			currPixel.print( std::cout );
+			currFrame.setPixelPixel( currPixel, i, j );
 
 			//run operation
 			// 0 0 0 | _ _ _ _ _
-			if( ( i || j ) and curr == prev ){
+			if( ( i || j ) and currPixel == prev ){
 				cntRun ++;
 #ifdef SMALL_TEST
 				if( cntRun < ( 1 << 5 )-1 and !( i == smallH-1 and j == smallW-1 ) ) continue;
@@ -131,18 +138,58 @@ void encodeFrame( int numCurrFrame ){
 #endif
 			}
 			if( cntRun ){
-				int type = 5;
+				int type = 0;
 				int info;
 				info = ( type << 5 );
 				info |= cntRun;
 				cntRun = 0;
 				fout.write( (char*) &info, sizeof( info ) );
-				if( curr == prev ) continue;
+				if( currPixel == prev ) continue;
 			}
 
-			int dr = prev.getR() - curr.getR();
-			int dg = prev.getG() - curr.getG();
-			int db = prev.getB() - curr.getB();
+			bool oke = false;
+			if( false and !firstTime ){
+				// 1 0 0 | _  _ _ _ _
+				//  type  u/l  dist
+
+				int type = 4;
+				for( int r=0 ; !oke and r < ( 1 << 4 ) ; r++ ){
+					if( i - r < 0 ) break;
+					if( prevFrame.getPixel( i-r, j ) == currPixel ){
+
+						int info = ( type << 5 );
+						info |= ( 1 << 4 );
+						info |= r;
+
+						//std::cerr << " up " << out( r ) << out( inBinary( info ) ) << std::endl;
+						fout.write( (char*)&info, sizeof( info ) );
+						oke = true;
+					}
+				}
+
+				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
+					if( j - c < 0 ) break;
+					if( prevFrame.getPixel( i, j-c ) == currPixel ){
+
+						int info = ( type << 5 );
+						info |= c;
+
+						//std::cerr << " left " << out( c ) << out( inBinary( info ) ) << std::endl;
+
+						fout.write( (char*)&info, sizeof( info ) );
+						oke = true;
+					}
+				}
+			}
+
+			if( oke ){
+				prev = currPixel;
+				continue;
+			}
+
+			int dr = prev.getR() - currPixel.getR();
+			int dg = prev.getG() - currPixel.getG();
+			int db = prev.getB() - currPixel.getB();
 			if( dr >= -15 and dr <= 16 && dg >= -7 and dg <= 8 && db >= -7 and db <= 8 ){
 				// diff
 				// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
@@ -162,14 +209,14 @@ void encodeFrame( int numCurrFrame ){
 				fout.write( (char * ) &info1, sizeof( info1 ) );
 				fout.write( (char * ) &info2, sizeof( info2 ) );
 
-				prev = curr;
+				prev = currPixel;
 				continue;
 			}
 
 			// hash
 			// 0 1 0 | _ _ _ _ _
-			int currHash = ( curr.getR() * 3 + curr.getG() * 5 + curr.getB() * 7 ) % modHash;
-			if( valHash[currHash] == Pixel() and valHash[currHash] == curr ){
+			int currHash = ( currPixel.getR() * 3 + currPixel.getG() * 5 + currPixel.getB() * 7 ) % modHash;
+			if( !hashViz[currHash] and valHash[currHash] == currPixel ){
 				hashViz[currHash] = true;
 
 				int currInd = hashTable[ currHash ];
@@ -181,7 +228,7 @@ void encodeFrame( int numCurrFrame ){
 
 				fout.write( (char *) & info, sizeof( info ) );
 
-				prev = curr;
+				prev = currPixel;
 				continue;
 			}
 
@@ -228,23 +275,43 @@ void encodeFrame( int numCurrFrame ){
 
 			int type = 3;
 			int infoType = ( type << 5 );
-			int infoR = curr.getR();
-			int infoG = curr.getG();
-			int infoB = curr.getB();
+			int infoR = currPixel.getR();
+			int infoG = currPixel.getG();
+			int infoB = currPixel.getB();
 
 			fout.write( (char *) &infoType, sizeof( infoType ) );
 			fout.write( (char *) &infoR, sizeof( infoR ) );
 			fout.write( (char *) &infoG, sizeof( infoG ) );
 			fout.write( (char *) &infoB, sizeof( infoB ) );
 
-  			if( !hashViz[currHash] and numHash < modHash ){
-  				valHash[ currHash ] = curr;
+  			if( valHash[currHash] == Pixel() and numHash < modHash ){
+  				valHash[ currHash ] = currPixel;
   				hashTable[ currHash ] = numHash ++;
   			}
 
-			prev = curr;
-			//currFrame.setPixelPixel( curr, i, j );
+			prev = currPixel;
 		}
+	}
+	prevFrame.setFrame( currFrame );
+	firstTime = false;
+
+}
+
+int main(){
+
+#ifdef TIME
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+#endif
+
+
+
+	srand( 69 );
+	int numFrames = 4;
+
+	fout.write( (char*)&numFrames, sizeof( numFrames ) );
+
+	for( int i=1 ; i <= numFrames ; i++ ){
+		encode( i );
 	}
 
 	//prevFrame.setFrame( currFrame );
@@ -271,7 +338,6 @@ int main(){
 	//  	encodeFrame( 2 );
 
 	fout.close();
-
 	if(!fout.good()) {
 		std::cout << "Error occurred at writing time!" << std::endl;
 		return 1;

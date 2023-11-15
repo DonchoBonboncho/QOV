@@ -34,6 +34,14 @@ class Pixel{
 		b = a.b;
 	}
 
+	void reset( ){
+		Pixel a = Pixel();
+
+		r = a.r;
+		g = a.g;
+		b = a.b;
+	}
+
 	void setR( int _r ){
 		r = _r;
 	}
@@ -43,13 +51,6 @@ class Pixel{
 	}
 	void setB( int _b ){
 		b = _b;
-	}
-
-	void reset( ){
-		Pixel a;
-		r = a.r;
-		g = a.g;
-		b = a.b;
 	}
 
 	// getters
@@ -65,7 +66,7 @@ class Pixel{
 		return b;
 	}
 
-	Pixel getPixel( )const{
+	Pixel getPixel( ) const{
 		return Pixel( r, g, b );
 	}
 
@@ -102,7 +103,7 @@ class Frame{
 	}
 
 	Pixel getPixel( int x, int y ) const{
-		return pixels[x][y];
+		return pixels[x][y].getPixel();
 	}
 
 	void init( ){
@@ -111,7 +112,7 @@ class Frame{
 	}
 
 	void setPixelPixel( const Pixel& p, int x, int y ){
-		pixels[x][y].setPixel( p.getPixel() );
+		pixels[x][y] = p;
 	}
 
 	void setPixelRGB( int r, int b, int g, int x, int y ){
@@ -122,10 +123,9 @@ class Frame{
 		FrameH = a.FrameH;
 		FrameW = a.FrameW;
 		init();
-
-		for( int i=0 ; i < a.FrameH ; i++ ){
-			for( int j=0 ; j < a.FrameW ; j++ ){
-				pixels[i][j].setPixel( a.getPixel( i, j ));
+		for( int i=0 ; i < FrameH ; i++ ){
+			for( int j=0 ; j < FrameW ; j++ ){
+				pixels[i][j].setPixel( a.getPixel( i, j ) );
 			}
 		}
 	}

@@ -22,31 +22,33 @@ bool vizHash[modHash];
 
 std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
 
-//Frame prevFrame;
-int currH, currW;
+int IMG_H;
+int IMG_W;
+
+Frame prevFrame;
+
 void decode( int numCurrFrame ){
+
+	Frame currFrame( IMG_H, IMG_W );
 
 	std::cerr << out( numCurrFrame ) << std::endl;
 
-
 	int runNum = 0;
 	int numHash = 0;
+
+	for( int i = 0 ; i < modHash ; i++ ){
+		vizHash[i] = false;
+		hashVal[i].reset();
+	}
+
 	Pixel prevPixel( 1234, 1234, 1234 );
-  	for( int i = 0 ; i < modHash ; i++ ){
-  		hashVal[i].reset();
-  		vizHash[i] = false;
-  	}
-
-	//Frame currFrame( currH, currW );
-
-	for( int i=0 ; i < currH ; i++ ){
-		for( int j=0 ; j < currW ; j++ ){
+	for( int i=0 ; i < IMG_H; i++ ){
+		for( int j=0 ; j < IMG_W; j++ ){
 
 			Pixel newPixel;
 
 			if( runNum ){
 				prevPixel.print( std::cout );
-
 				runNum --;
 				continue;
 			}
@@ -56,7 +58,7 @@ void decode( int numCurrFrame ){
 
 			int cpInfo = info;
 			int type = cpInfo >> 5;
-			if( type == 5 ){
+			if( type == 0 ){
 				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
 				prevPixel.print( std::cout );
 				runNum --;
@@ -121,13 +123,51 @@ void decode( int numCurrFrame ){
 
 			}
 
+			if( type == 4 ){
+
+				bool up = info & ( 1 << 4 );
+				int dist = info & ( ( 1 << 4 ) -1 );
+				//std::cerr << out( up ) << out( dist ) << std::endl;
+
+				if( up ) newPixel.setPixel( prevFrame.getPixel( i-dist, j ) );
+				else newPixel.setPixel( prevFrame.getPixel( i, j-dist ) );
+
+			}
+
 			newPixel.print( std::cout );
 
+
+			currFrame.setPixelPixel( newPixel, i, j );
 			prevPixel.setPixel( newPixel );
 
 			//currFrame.setPixelPixel( newPixel.getPixel(), i, j );
 		}
 	}
+	prevFrame.setFrame( currFrame );
+}
+
+int main(){
+
+#ifdef TIME
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+#endif
+
+	if( !fin ){
+		std::cerr << " nqma otvarqne " << std::endl;
+		return 1;
+	}
+
+	int numFrames = -1;
+
+	fin.read( (char*)&numFrames, sizeof( numFrames ) );
+
+	fin.read((char *)&IMG_H, sizeof( IMG_H ) );
+	fin.read((char *)&IMG_W, sizeof( IMG_W ) );
+
+	for( int i=1 ; i <= numFrames ; i ++ ){
+		decode( i );
+	}
+
 
 	//prevFrame.setFrame( currFrame );
 
