@@ -33,23 +33,17 @@ int numHash = 0;
 
 Pixel valHash[modHash];
 
-int main(){
+int IMG_H;
+int IMG_W;
 
-#ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-#endif
+std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary);
 
-	std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary);
+bool firstTime = true;
 
-	if(!fout) {
-		std::cout << "Ne moga da otvorq OUTPUT faila" << std::endl;
-		return 1;
-	}
+void encode( int numCurrFrame ){
 
-
-	int numFrame = 42;
 	std::string pathPref = "../frames/";
-	std::string pathImgName = getFramNum( numFrame );
+	std::string pathImgName = getFramNum( numCurrFrame );
 	std::string pathSuff = ".png";
 	
 	std::string path = pathPref + pathImgName + pathSuff;
@@ -57,12 +51,10 @@ int main(){
 	
 	Mat img = imread( path, IMREAD_COLOR);
 
-    if(img.empty())
-	{
-		return 1;
+    if(img.empty()) {
+		std::cerr << " can't open the image " << std::endl;
+		return ;
 	}
-
-	std::srand( 74 );
 
 #ifdef SMALL_TEST
 
@@ -82,18 +74,21 @@ int main(){
 		}
 	}
 
-	fout.write( (char *)&smallH, sizeof( smallH ) );
-	fout.write( (char *)&smallW, sizeof( smallW ) );
+
+#else
+
+	IMG_H = img.rows;
+	IMG_W = img.rows;
 
 #endif
 
-	const int IMG_H = img.rows;
-	const int IMG_W = img.cols;
-	std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
-#ifndef SMALL_TEST
-	fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
-	fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
-#endif
+	if( firstTime ){
+		firstTime = false;
+
+		fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
+		fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
+		std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
+	}
 
 	Frame currFrame( IMG_H, IMG_W );
 	Pixel prev( 12345, 12345, 12345 );
@@ -101,13 +96,8 @@ int main(){
 	
 	for( int i=0 ; i < modHash ; i++ ) valHash[i] = Pixel();
 
-#ifdef SMALL_TEST 
-	for(int i=0; i < smallH ; i++) {
-		for(int j=0; j < smallW; j++) {
-#else
 	for(int i=0; i < IMG_H ; i++) {
 		for(int j=0; j < IMG_W; j++) {
-#endif
 
 #ifdef SMALL_TEST
 			Pixel curr = smallFrame.getPixel( i, j );
@@ -207,9 +197,26 @@ int main(){
 			prev = curr;
 		}
 	}
+}
+
+int main(){
+
+#ifdef TIME
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+#endif
+
+
+
+	srand( 69 );
+	int numFrames = 3;
+
+	fout.write( (char*)&numFrames, sizeof( numFrames ) );
+
+	for( int i=1 ; i <= numFrames ; i++ ){
+		encode( i );
+	}
 
 	fout.close();
-
 	if(!fout.good()) {
 		std::cout << "Error occurred at writing time!" << std::endl;
 		return 1;
