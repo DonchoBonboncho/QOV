@@ -19,21 +19,28 @@ int hashTable[modHash];
 Pixel hashVal[modHash];
 
 bool vizHash[modHash];
-int valHashR[modHash];
-int valHashG[modHash];
-int valHashB[modHash];
 
 std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
 
 int IMG_H;
 int IMG_W;
 
+Frame prevFrame;
+
 void decode( int numCurrFrame ){
+
+	Frame currFrame( IMG_H, IMG_W );
 
 	std::cerr << out( numCurrFrame ) << std::endl;
 
 	int runNum = 0;
 	int numHash = 0;
+
+	for( int i = 0 ; i < modHash ; i++ ){
+		vizHash[i] = false;
+		hashVal[i].reset();
+	}
+
 	Pixel prevPixel( 1234, 1234, 1234 );
 	for( int i=0 ; i < IMG_H; i++ ){
 		for( int j=0 ; j < IMG_W; j++ ){
@@ -42,19 +49,16 @@ void decode( int numCurrFrame ){
 
 			if( runNum ){
 				prevPixel.print( std::cout );
-
 				runNum --;
 				continue;
 			}
-
-			int currR, currB, currG;
 
 			int info;
 			fin.read( (char*) &info, sizeof( info ) );
 
 			int cpInfo = info;
 			int type = cpInfo >> 5;
-			if( type == 5 ){
+			if( type == 0 ){
 				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
 				prevPixel.print( std::cout );
 				runNum --;
@@ -104,11 +108,25 @@ void decode( int numCurrFrame ){
 
 			}
 
+			if( type == 4 ){
+
+				bool up = info & ( 1 << 4 );
+				int dist = info & ( ( 1 << 4 ) -1 );
+				//std::cerr << out( up ) << out( dist ) << std::endl;
+
+				if( up ) newPixel.setPixel( prevFrame.getPixel( i-dist, j ) );
+				else newPixel.setPixel( prevFrame.getPixel( i, j-dist ) );
+
+			}
+
 			newPixel.print( std::cout );
 
+
+			currFrame.setPixelPixel( newPixel, i, j );
 			prevPixel.setPixel( newPixel );
 		}
 	}
+	prevFrame.setFrame( currFrame );
 }
 
 int main(){

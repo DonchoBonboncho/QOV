@@ -34,6 +34,14 @@ class Pixel{
 		b = a.b;
 	}
 
+	void reset( ){
+		Pixel a = Pixel();
+
+		r = a.r;
+		g = a.g;
+		b = a.b;
+	}
+
 	void setR( int _r ){
 		r = _r;
 	}
@@ -58,6 +66,10 @@ class Pixel{
 		return b;
 	}
 
+	Pixel getPixel( ) const{
+		return Pixel( r, g, b );
+	}
+
 	bool operator ==( const Pixel& currP ){
 		if( r != currP.r ) return false;
 		if( g != currP.g ) return false;
@@ -80,6 +92,10 @@ class Frame{
 
 	public:
 
+	Frame( ){
+		FrameH = FrameW = -1;
+	}
+
 	Frame( int H, int W ){
 		FrameH = H;
 		FrameW = W;
@@ -87,7 +103,7 @@ class Frame{
 	}
 
 	Pixel getPixel( int x, int y ) const{
-		return pixels[x][y];
+		return pixels[x][y].getPixel();
 	}
 
 	void init( ){
@@ -101,6 +117,17 @@ class Frame{
 
 	void setPixelRGB( int r, int b, int g, int x, int y ){
 		pixels[x][y].setRGB( r, g, b );
+	}
+
+	void setFrame( const Frame& a ){
+		FrameH = a.FrameH;
+		FrameW = a.FrameW;
+		init();
+		for( int i=0 ; i < FrameH ; i++ ){
+			for( int j=0 ; j < FrameW ; j++ ){
+				pixels[i][j].setPixel( a.getPixel( i, j ) );
+			}
+		}
 	}
 
 	~Frame(){

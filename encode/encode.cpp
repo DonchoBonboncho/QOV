@@ -5,7 +5,9 @@
 	0 0 0 | _ _ _ _ _		- run
 	0 0 1 | _ _ _ _ _ x2	- diff
 	0 1 0 | _ _ _ _ _ 		- hash table ind
-	0 1 1 | _ _ _ _ _ x2	- new
+	0 1 1 | _ _ _ _ _ x4	- new
+	1 0 0 | _ _ _ _ _		- prev frame
+
 
 */
 #include "../QOV.h"
@@ -40,7 +42,10 @@ std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary)
 
 bool firstTime = true;
 
+Frame prevFrame;
+
 void encode( int numCurrFrame ){
+
 
 	std::string pathPref = "../frames/";
 	std::string pathImgName = getFramNum( numCurrFrame );
@@ -69,8 +74,8 @@ void encode( int numCurrFrame ){
 			currG %= 256;
 			int currB = i + rand();
 			currB %= 256;
-			Pixel curr( currR, currG, currB );
-			smallFrame.setPixelPixel( curr, i, j );
+			Pixel currPixel( currR, currG, currB );
+			smallFrame.setPixelPixel( currPixel, i, j );
 		}
 	}
 
@@ -83,8 +88,6 @@ void encode( int numCurrFrame ){
 #endif
 
 	if( firstTime ){
-		firstTime = false;
-
 		fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
 		fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
 		std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
@@ -93,6 +96,11 @@ void encode( int numCurrFrame ){
 	Frame currFrame( IMG_H, IMG_W );
 	Pixel prev( 12345, 12345, 12345 );
 	int cntRun = 0;
+
+	for( int i=0 ; i < modHash ; i++ ){
+		hashViz[i] = false;
+		valHash[i].reset();
+	}
 	
 	for( int i=0 ; i < modHash ; i++ ) valHash[i] = Pixel();
 
@@ -100,22 +108,20 @@ void encode( int numCurrFrame ){
 		for(int j=0; j < IMG_W; j++) {
 
 #ifdef SMALL_TEST
-			Pixel curr = smallFrame.getPixel( i, j );
+			Pixel currPixel = smallFrame.getPixel( i, j );
 #else
 			int b = img.at< cv::Vec3b>( i, j )[0];
   			int g = img.at< cv::Vec3b>( i, j )[1];
   			int r = img.at< cv::Vec3b>( i, j )[2];
 
-  			Pixel curr( r, g, b );
+  			Pixel currPixel( r, g, b );
 #endif
-			std::cout << curr.getR() << " " << curr.getG() << " " << curr.getB() << std::endl;
-
-			currFrame.setPixelPixel( curr, i, j );
-
+			currPixel.print( std::cout );
+			currFrame.setPixelPixel( currPixel, i, j );
 
 			//run operation
 			// 0 0 0 | _ _ _ _ _
-			if( ( i || j ) and curr == prev ){
+			if( ( i || j ) and currPixel == prev ){
 				cntRun ++;
 #ifdef SMALL_TEST
 				if( cntRun < ( 1 << 5 )-1 and !( i == smallH-1 and j == smallW-1 ) ) continue;
@@ -124,18 +130,58 @@ void encode( int numCurrFrame ){
 #endif
 			}
 			if( cntRun ){
-				int type = 5;
+				int type = 0;
 				int info;
 				info = ( type << 5 );
 				info |= cntRun;
 				cntRun = 0;
 				fout.write( (char*) &info, sizeof( info ) );
-				if( curr == prev ) continue;
+				if( currPixel == prev ) continue;
 			}
 
-			int dr = prev.getR() - curr.getR();
-			int dg = prev.getG() - curr.getG();
-			int db = prev.getB() - curr.getB();
+			bool oke = false;
+			if( false and !firstTime ){
+				// 1 0 0 | _  _ _ _ _
+				//  type  u/l  dist
+
+				int type = 4;
+				for( int r=0 ; !oke and r < ( 1 << 4 ) ; r++ ){
+					if( i - r < 0 ) break;
+					if( prevFrame.getPixel( i-r, j ) == currPixel ){
+
+						int info = ( type << 5 );
+						info |= ( 1 << 4 );
+						info |= r;
+
+						//std::cerr << " up " << out( r ) << out( inBinary( info ) ) << std::endl;
+						fout.write( (char*)&info, sizeof( info ) );
+						oke = true;
+					}
+				}
+
+				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
+					if( j - c < 0 ) break;
+					if( prevFrame.getPixel( i, j-c ) == currPixel ){
+
+						int info = ( type << 5 );
+						info |= c;
+
+						//std::cerr << " left " << out( c ) << out( inBinary( info ) ) << std::endl;
+
+						fout.write( (char*)&info, sizeof( info ) );
+						oke = true;
+					}
+				}
+			}
+
+			if( oke ){
+				prev = currPixel;
+				continue;
+			}
+
+			int dr = prev.getR() - currPixel.getR();
+			int dg = prev.getG() - currPixel.getG();
+			int db = prev.getB() - currPixel.getB();
 			if( dr >= -15 and dr <= 16 && dg >= -7 and dg <= 8 && db >= -7 and db <= 8 ){
 				// diff
 				// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
@@ -155,14 +201,14 @@ void encode( int numCurrFrame ){
 				fout.write( (char * ) &info1, sizeof( info1 ) );
 				fout.write( (char * ) &info2, sizeof( info2 ) );
 
-				prev = curr;
+				prev = currPixel;
 				continue;
 			}
 
 			// hash
 			// 0 1 0 | _ _ _ _ _
-			int currHash = ( curr.getR() * 3 + curr.getG() * 5 + curr.getB() * 7 ) % modHash;
-			if( !hashViz[currHash] and valHash[currHash] == curr ){
+			int currHash = ( currPixel.getR() * 3 + currPixel.getG() * 5 + currPixel.getB() * 7 ) % modHash;
+			if( !hashViz[currHash] and valHash[currHash] == currPixel ){
 				hashViz[currHash] = true;
 
 				int currInd = hashTable[ currHash];
@@ -174,15 +220,15 @@ void encode( int numCurrFrame ){
 
 				fout.write( (char * ) & info, sizeof( info ) );
 
-				prev = curr;
+				prev = currPixel;
 				continue;
 			}
 
 			int type = 3;
 			int infoType = ( type << 5 );
-			int infoR = curr.getR();
-			int infoG = curr.getG();
-			int infoB = curr.getB();
+			int infoR = currPixel.getR();
+			int infoG = currPixel.getG();
+			int infoB = currPixel.getB();
 
 			fout.write( (char *) &infoType, sizeof( infoType ) );
 			fout.write( (char *) &infoR, sizeof( infoR ) );
@@ -190,13 +236,16 @@ void encode( int numCurrFrame ){
 			fout.write( (char *) &infoB, sizeof( infoB ) );
 
   			if( valHash[currHash] == Pixel() and numHash < modHash ){
-  				valHash[ currHash ] = curr;
+  				valHash[ currHash ] = currPixel;
   				hashTable[ currHash ] = numHash ++;
   			}
 
-			prev = curr;
+			prev = currPixel;
 		}
 	}
+	prevFrame.setFrame( currFrame );
+	firstTime = false;
+
 }
 
 int main(){
@@ -208,7 +257,7 @@ int main(){
 
 
 	srand( 69 );
-	int numFrames = 3;
+	int numFrames = 4;
 
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
