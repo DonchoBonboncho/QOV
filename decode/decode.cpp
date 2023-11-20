@@ -50,6 +50,7 @@ void decode( int numCurrFrame ){
 			if( runNum ){
 				prevPixel.print( std::cout );
 				runNum --;
+				currFrame.setPixelPixel( prevPixel, i, j );
 				continue;
 			}
 
@@ -62,6 +63,7 @@ void decode( int numCurrFrame ){
 				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
 				prevPixel.print( std::cout );
 				runNum --;
+				currFrame.setPixelPixel( prevPixel, i, j );
 				continue;
 			}
 			if( type == 1 ){
@@ -86,21 +88,6 @@ void decode( int numCurrFrame ){
 				newPixel.setPixel( hashVal[currHashInd] );
 			}
 
-
-			if( type == 7 ){
-				std::cerr << out( type ) << std::endl;
-				bool rows = ( 1 >> 4 ) & 1;
-
-				int dist = info & ( 1 << 4 ) -1;
-				if( rows ){
-					//newPixel.setPixel( prevFrame.getPixel( i-dist, j ) );
-				}else{
-					//newPixel.setPixel( prevFrame.getPixel( i, j - dist ) );
-				}
-			}
-					
-
-
 			if( type == 3 ){
 
 				int _r, _g, _b;
@@ -124,18 +111,25 @@ void decode( int numCurrFrame ){
 			}
 
 			if( type == 4 ){
+				//std::cerr << out( type ) << std::endl;
+				bool rows = info & ( 1 << 4 );
 
-				bool up = info & ( 1 << 4 );
 				int dist = info & ( ( 1 << 4 ) -1 );
-				//std::cerr << out( up ) << out( dist ) << std::endl;
-
-				if( up ) newPixel.setPixel( prevFrame.getPixel( i-dist, j ) );
-				else newPixel.setPixel( prevFrame.getPixel( i, j-dist ) );
-
+				//std::cout << rows << " " << i << " " << j << " " << dist << std::endl;
+				if( rows ){
+					Pixel currPixel = prevFrame.getPixel( i-dist, j );
+					//currPixel.print( std::cout );
+					newPixel.setPixel( currPixel );
+				}else{
+					Pixel currPixel = prevFrame.getPixel( i, j - dist );
+					//currPixel.print( std::cout );
+					newPixel.setPixel( currPixel );
+				}
+				//std::cout << std::endl;
 			}
+					
 
 			newPixel.print( std::cout );
-
 
 			currFrame.setPixelPixel( newPixel, i, j );
 			prevPixel.setPixel( newPixel );

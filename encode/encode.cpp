@@ -6,7 +6,8 @@ hashVal
 	0 0 1 | _ _ _ _ _ x2	- diff
 	0 1 0 | _ _ _ _ _ 		- hash table ind
 	0 1 1 | _ _ _ _ _ x4	- new
-	1 0 0 | _ _ _ _ _		- prev frame
+	1 0 0 | _ _ _ _ _		- last frame
+	1 0 1 | _ _ _ _ _		- prev frames
 
 */
 #include "../QOV.h"
@@ -41,7 +42,9 @@ std::ofstream fout("../build/encodeBytes.dat", std::ios::out | std::ios::binary)
 
 bool firstTime = true;
 
-Frame prevFrame;
+Frame lastFrame;
+Frame prevFrames[4];
+// 0 - I frame , 1 - 3 P frames
 
 void encode( int numCurrFrame ){
 
@@ -126,7 +129,13 @@ void encode( int numCurrFrame ){
 
 			//run operation
 			// 0 0 0 | _ _ _ _ _
+//			currPixel.print( std::cerr );
+//			std::cerr << " ";
+//			prev.print( std::cerr );
+//			std::cerr << std::endl;
+
 			if( ( i || j ) and currPixel == prev ){
+				//std::cerr << " vlqzoh " << std::endl;
 				cntRun ++;
 #ifdef SMALL_TEST
 				if( cntRun < ( 1 << 5 )-1 and !( i == smallH-1 and j == smallW-1 ) ) continue;
@@ -142,46 +151,6 @@ void encode( int numCurrFrame ){
 				cntRun = 0;
 				fout.write( (char*) &info, sizeof( info ) );
 				if( currPixel == prev ) continue;
-			}
-
-			bool oke = false;
-			if( false and !firstTime ){
-				// 1 0 0 | _  _ _ _ _
-				//  type  u/l  dist
-
-				int type = 4;
-				for( int r=0 ; !oke and r < ( 1 << 4 ) ; r++ ){
-					if( i - r < 0 ) break;
-					if( prevFrame.getPixel( i-r, j ) == currPixel ){
-
-						int info = ( type << 5 );
-						info |= ( 1 << 4 );
-						info |= r;
-
-						//std::cerr << " up " << out( r ) << out( inBinary( info ) ) << std::endl;
-						fout.write( (char*)&info, sizeof( info ) );
-						oke = true;
-					}
-				}
-
-				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
-					if( j - c < 0 ) break;
-					if( prevFrame.getPixel( i, j-c ) == currPixel ){
-
-						int info = ( type << 5 );
-						info |= c;
-
-						//std::cerr << " left " << out( c ) << out( inBinary( info ) ) << std::endl;
-
-						fout.write( (char*)&info, sizeof( info ) );
-						oke = true;
-					}
-				}
-			}
-
-			if( oke ){
-				prev = currPixel;
-				continue;
 			}
 
 			int dr = prev.getR() - currPixel.getR();
@@ -229,44 +198,75 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			if( false and numCurrFrame > 1 ){
+			bool oke = false;
+			if( !firstTime ){
+
 				// prev frame
 				// _ _ _ | _  _ _ _ _
 				//  type  r/u   dist 
 
-				bool oke = false;
-				for( int r=0 ; r < (1 << 4) ; r++){
+				for( int r=0 ; !oke and r < (1 << 4) ; r++){
 					if( i - r < 0 ) break;
-					if( prevFrame.getPixel( i - r, j ) == currPixel.getPixel() ){
-						int type = 7;
+					if( lastFrame.getPixel( i - r, j ) == currPixel.getPixel() ){
+
+//				std::cerr << out( i ) << out( j ) << std::endl;
+//				std::cerr << " prev: " << std::endl;
+//				prev.print( std::cerr );
+//				std::cerr << " curr : " << std::endl;
+//		std::cerr << out( i ) << out( j ) << std::endl;
+//				std::cerr << std::endl;
+
+						int type = 4;
 
 						int info = ( type << 5 );
 						info |= ( 1 << 4 );
 						info |= r;
+						//std::cout << 1 << " " << i << " " << j << " " << r << std::endl;
+						//currPixel.print( std::cout );
+						//std::cout << std::endl;
 
-						std::cerr << " r " << out( info ) << inBinary( info ) << std::endl;
+						//std::cerr << lastFrame.getPixel( i - r, j ).getR() << " " << lastFrame.getPixel( i - r, j ).getG() << " " << lastFrame.getPixel( i - r, j ).getB() << std::endl;
+						//std::cerr << " up " << out( i ) << out( j ) << std::endl;
 
 						fout.write( (char*)&info, sizeof( info ) );
 						oke = true;
+						prev = currPixel;
 					}
+					if( oke ) break;
 				}
 
 				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
 					if( j - c < 0 ) break;
-					if( prevFrame.getPixel( i, j - c ) == currPixel.getPixel() ){
+					if( lastFrame.getPixel( i, j - c ) == currPixel.getPixel() ){
 
-						int type = 7;
+						int type = 4;
 						
 						int info = ( type << 5 );
 						info |= c;
 
-						std::cerr << " c " << out( info ) << out( c ) << inBinary( info ) << std::endl;
+						//std::cerr << out( i ) << out( j ) << std::endl;
+						//std::cerr << lastFrame.getPixel( i, j - c ).getR() << " " << lastFrame.getPixel(  i, j - c ).getG() << " " << lastFrame.getPixel( i, j - c ).getB() << std::endl;
+
+						//std::cerr << " left " << out( i ) << out( j ) << std::endl;
+						//std::cout << 0 << " " << i << " " << j << " " << c << std::endl;
+						//currPixel.print( std::cout );
+						//std::cout << std::endl;
 
 						fout.write( (char*)&info, sizeof( info ) );
 						oke = true;
+						prev = currPixel;
 					}
+					if( oke ) break;
 				}
 
+			}
+
+			if( oke ){
+//				std::cerr << " smqna na prev " << std::endl;
+//				prev.print( std::cerr );
+//				std::cerr << " prev = curr " << std::endl;
+//				prev.print( std::cerr );
+				continue;
 			}
 
 
@@ -289,7 +289,7 @@ void encode( int numCurrFrame ){
 			prev = currPixel;
 		}
 	}
-	prevFrame.setFrame( currFrame );
+	lastFrame.setFrame( currFrame );
 	firstTime = false;
 
 }
@@ -302,7 +302,7 @@ int main(){
 
 	std::srand( 69 );
 
-	int numFrames = 2;
+	int numFrames = 5;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
 	firstTime = true;
