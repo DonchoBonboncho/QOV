@@ -25,8 +25,12 @@ std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
 int IMG_H;
 int IMG_W;
 
-Frame prevFrame;
+Frame prevFrame[4];
+bool haveFrame[4];
+const long long MAX_DIFF = 1586304000; 
+Frame lastFrame;
 
+bool firstTime = true;
 void decode( int numCurrFrame ){
 
 	Frame currFrame( IMG_H, IMG_W );
@@ -42,6 +46,7 @@ void decode( int numCurrFrame ){
 	}
 
 	Pixel prevPixel( 1234, 1234, 1234 );
+	long long currDiff = 0;
 	for( int i=0 ; i < IMG_H; i++ ){
 		for( int j=0 ; j < IMG_W; j++ ){
 
@@ -117,17 +122,41 @@ void decode( int numCurrFrame ){
 				int dist = info & ( ( 1 << 4 ) -1 );
 				//std::cout << rows << " " << i << " " << j << " " << dist << std::endl;
 				if( rows ){
-					Pixel currPixel = prevFrame.getPixel( i-dist, j );
+					Pixel currPixel = lastFrame.getPixel( i-dist, j );
 					//currPixel.print( std::cout );
 					newPixel.setPixel( currPixel );
 				}else{
-					Pixel currPixel = prevFrame.getPixel( i, j - dist );
+					Pixel currPixel = lastFrame.getPixel( i, j - dist );
 					//currPixel.print( std::cout );
 					newPixel.setPixel( currPixel );
 				}
 				//std::cout << std::endl;
 			}
 					
+			if( type == 5 ){
+
+				int buff = info;
+				
+				int prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
+				int dist = info & ( ( 1 << 3 ) -1 );
+				//std::cerr << out( prevFrameInd ) << out( dist ) << std::endl;
+
+				//std::cout << type << " " << i << " " << j << " " << prevFrameInd << " " << dist << std::endl;
+
+				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i - ( dist + 1 ), j ) );
+			}
+
+			if( type == 6 ){
+				int buff = info;
+				
+				int prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
+				int dist = info & ( ( 1 << 3 ) -1 );
+
+				//std::cerr << out( prevFrameInd ) << out( dist ) << std::endl;
+
+				//std::cout << type << " " << i << " " << j << " " << prevFrameInd << " " << dist << std::endl;
+				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i, j - ( dist + 1 ) ) );
+			}
 
 			newPixel.print( std::cout );
 
@@ -137,7 +166,29 @@ void decode( int numCurrFrame ){
 			//currFrame.setPixelPixel( newPixel.getPixel(), i, j );
 		}
 	}
-	prevFrame.setFrame( currFrame );
+
+	bool oke = false;
+	if( firstTime || currDiff >= MAX_DIFF / 10 ){
+		prevFrame[0].setFrame( currFrame );
+		haveFrame[0] = true;
+		haveFrame[2] = haveFrame[3] = false;
+		oke = true;
+	}else if( !haveFrame[2] || currDiff >= MAX_DIFF / 100 ){
+		prevFrame[2].setFrame( currFrame );
+		haveFrame[2] = true;
+		oke = true;
+	}else if( !haveFrame[3] || currDiff >= MAX_DIFF / 1000 ){
+		prevFrame[3].setFrame( currFrame );
+		haveFrame[3] = true;
+		oke = true;
+	}
+
+	if( numCurrFrame % 7 == 0 and !oke ){
+		prevFrame[1].setFrame( currFrame );
+	}
+
+	lastFrame.setFrame( currFrame );
+	firstTime = false;
 }
 
 int main(){

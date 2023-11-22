@@ -3,14 +3,13 @@
 #include <algorithm>
 
 class Pixel{
-	private:
 
-	int r;
-	int g;
-	int b;
+	private:
+		int r;
+		int g;
+		int b;
 
 	public:
-
 	Pixel( ){
 		r = b = g = 0;
 	}
