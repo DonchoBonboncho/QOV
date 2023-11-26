@@ -116,21 +116,16 @@ void decode( int numCurrFrame ){
 			}
 
 			if( type == 4 ){
-				//std::cerr << out( type ) << std::endl;
 				bool rows = info & ( 1 << 4 );
 
 				int dist = info & ( ( 1 << 4 ) -1 );
-				//std::cout << rows << " " << i << " " << j << " " << dist << std::endl;
 				if( rows ){
 					Pixel currPixel = lastFrame.getPixel( i-dist, j );
-					//currPixel.print( std::cout );
 					newPixel.setPixel( currPixel );
 				}else{
 					Pixel currPixel = lastFrame.getPixel( i, j - dist );
-					//currPixel.print( std::cout );
 					newPixel.setPixel( currPixel );
 				}
-				//std::cout << std::endl;
 			}
 					
 			if( type == 5 ){
@@ -142,6 +137,10 @@ void decode( int numCurrFrame ){
 				//std::cerr << out( prevFrameInd ) << out( dist ) << std::endl;
 
 				//std::cout << type << " " << i << " " << j << " " << prevFrameInd << " " << dist << std::endl;
+
+				if( !haveFrame[ prevFrameInd ] ){
+					std::cerr << " losha rabota bate " << std::endl;
+				}
 
 				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i - ( dist + 1 ), j ) );
 			}
@@ -155,6 +154,7 @@ void decode( int numCurrFrame ){
 				//std::cerr << out( prevFrameInd ) << out( dist ) << std::endl;
 
 				//std::cout << type << " " << i << " " << j << " " << prevFrameInd << " " << dist << std::endl;
+
 				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i, j - ( dist + 1 ) ) );
 			}
 
@@ -167,24 +167,35 @@ void decode( int numCurrFrame ){
 		}
 	}
 
-	bool oke = false;
-	if( firstTime || currDiff >= MAX_DIFF / 10 ){
+	if( !firstTime ){
+		currDiff = currFrame.getDiff( lastFrame );
+	}
+
+	bool setFrame = false;
+	if( !haveFrame[0] || currDiff >= MAX_DIFF / 2 ){
 		prevFrame[0].setFrame( currFrame );
 		haveFrame[0] = true;
 		haveFrame[2] = haveFrame[3] = false;
-		oke = true;
-	}else if( !haveFrame[2] || currDiff >= MAX_DIFF / 100 ){
+		setFrame = true;
+
+		//std::cout << 0 << " " << numCurrFrame << std::endl;
+	}else if( !haveFrame[2] || currDiff >= MAX_DIFF / 10 ){
 		prevFrame[2].setFrame( currFrame );
 		haveFrame[2] = true;
-		oke = true;
-	}else if( !haveFrame[3] || currDiff >= MAX_DIFF / 1000 ){
+		setFrame = true;
+
+		//std::cout << 2 << " " << numCurrFrame << std::endl;
+	}else if( !haveFrame[3] || currDiff >= MAX_DIFF / 50 ){
 		prevFrame[3].setFrame( currFrame );
 		haveFrame[3] = true;
-		oke = true;
+		setFrame = true;
+
+		//std::cout << 3 << " " << numCurrFrame << std::endl;
 	}
 
-	if( numCurrFrame % 7 == 0 and !oke ){
+	if( numCurrFrame % 7 == 0 and !setFrame ){
 		prevFrame[1].setFrame( currFrame );
+		//std::cout << 1 << " " << numCurrFrame << std::endl;
 	}
 
 	lastFrame.setFrame( currFrame );

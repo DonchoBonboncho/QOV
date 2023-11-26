@@ -105,6 +105,19 @@ class Frame{
 		return pixels[x][y].getPixel();
 	}
 
+	long long getDiff( const Frame& a ){
+		long long diff = 0;
+		for( int i=0 ; i < a.FrameH ; i ++ ){
+			for( int j=0 ; j < a.FrameW ; j ++ ){
+				diff += abs( a.getPixel( i, j ).getR() - pixels[i][j].getR() );
+				diff += abs( a.getPixel( i, j ).getG() - pixels[i][j].getG() );
+				diff += abs( a.getPixel( i, j ).getB() - pixels[i][j].getB() );
+			}
+		}
+		return diff;
+	}
+
+
 	void init( ){
 		pixels = new Pixel* [FrameH];
 		for( int i=0 ; i < FrameH ; i++ ) pixels[i] = new Pixel [FrameW];
