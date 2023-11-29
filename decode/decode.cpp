@@ -13,9 +13,9 @@ using namespace cv;
 
 #define out(x) #x << " = " << x << "  "
 
-const int modHash = 32;
+const uint8_t modHash = 32;
 
-int hashTable[modHash];
+uint8_t hashTable[modHash];
 Pixel hashVal[modHash];
 
 bool vizHash[modHash];
@@ -31,21 +31,24 @@ const long long MAX_DIFF = 1586304000;
 Frame lastFrame;
 
 bool firstTime = true;
+
+std::vector< Mat > images;
+
 void decode( int numCurrFrame ){
 
 	Frame currFrame( IMG_H, IMG_W );
 
 	std::cerr << out( numCurrFrame ) << std::endl;
 
-	int runNum = 0;
-	int numHash = 0;
+	uint8_t runNum = 0;
+	uint8_t numHash = 0;
 
-	for( int i = 0 ; i < modHash ; i++ ){
+	for( uint8_t i = 0 ; i < modHash ; i++ ){
 		vizHash[i] = false;
 		hashVal[i].reset();
 	}
 
-	Pixel prevPixel( 1234, 1234, 1234 );
+	Pixel prevPixel( 255, 255, 255 );
 	long long currDiff = 0;
 	for( int i=0 ; i < IMG_H; i++ ){
 		for( int j=0 ; j < IMG_W; j++ ){
@@ -59,11 +62,11 @@ void decode( int numCurrFrame ){
 				continue;
 			}
 
-			int info;
+			uint8_t info;
 			fin.read( (char*) &info, sizeof( info ) );
 
-			int cpInfo = info;
-			int type = cpInfo >> 5;
+			uint8_t cpInfo = info;
+			uint8_t type = cpInfo >> 5;
 			if( type == 0 ){
 				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
 				prevPixel.print( std::cout );
@@ -72,30 +75,30 @@ void decode( int numCurrFrame ){
 				continue;
 			}
 			if( type == 1 ){
-				int dr = info & ( ( 1 << 5 ) -1 );
+				int8_t dr = info & ( ( 1 << 5 ) -1 );
 				dr -= 15;
 				newPixel.setR( prevPixel.getR() - dr );
 
-				int info2;
+				uint8_t info2;
 				fin.read( (char*) &info2, sizeof( info2 ) );
 
-				int dg = ( info2 >> 4 );
+				int8_t dg = ( info2 >> 4 );
 				dg -= 7;
 				newPixel.setG( prevPixel.getG() - dg );
 
-				int db = info2 & ( ( 1 << 4 ) -1 );
+				int8_t db = info2 & ( ( 1 << 4 ) -1 );
 				db -= 7;
 				newPixel.setB( prevPixel.getB() - db );
 			}
 				
 			if( type == 2 ){
-				int currHashInd =  info & ( ( 1 << 5 ) -1 );
+				uint8_t currHashInd =  info & ( ( 1 << 5 ) -1 );
 				newPixel.setPixel( hashVal[currHashInd] );
 			}
 
 			if( type == 3 ){
 
-				int _r, _g, _b;
+				uint8_t _r, _g, _b;
 				fin.read( (char*) &_r, sizeof( _r ) );
 				newPixel.setR( _r );
 				
@@ -105,7 +108,7 @@ void decode( int numCurrFrame ){
 				fin.read( (char*) &_b, sizeof( _b ) );
 				newPixel.setB( _b );
 
-				int currHash = ( newPixel.getR() * 3 + newPixel.getG() * 5 + newPixel.getB() * 7 ) % modHash;
+				uint8_t currHash = ( newPixel.getR() * 3 + newPixel.getG() * 5 + newPixel.getB() * 7 ) % modHash;
 				if( !vizHash[currHash] and numHash < modHash ){
 
 					vizHash[currHash] = true;
@@ -118,7 +121,7 @@ void decode( int numCurrFrame ){
 			if( type == 4 ){
 				bool rows = info & ( 1 << 4 );
 
-				int dist = info & ( ( 1 << 4 ) -1 );
+				uint8_t dist = info & ( ( 1 << 4 ) -1 );
 				if( rows ){
 					Pixel currPixel = lastFrame.getPixel( i-dist, j );
 					newPixel.setPixel( currPixel );
@@ -130,13 +133,10 @@ void decode( int numCurrFrame ){
 					
 			if( type == 5 ){
 
-				int buff = info;
+				uint8_t buff = info;
 				
-				int prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
-				int dist = info & ( ( 1 << 3 ) -1 );
-				//std::cerr << out( prevFrameInd ) << out( dist ) << std::endl;
-
-				//std::cout << type << " " << i << " " << j << " " << prevFrameInd << " " << dist << std::endl;
+				uint8_t prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
+				uint8_t dist = info & ( ( 1 << 3 ) -1 );
 
 				if( !haveFrame[ prevFrameInd ] ){
 					std::cerr << " losha rabota bate " << std::endl;
@@ -146,14 +146,10 @@ void decode( int numCurrFrame ){
 			}
 
 			if( type == 6 ){
-				int buff = info;
+				uint8_t buff = info;
 				
-				int prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
-				int dist = info & ( ( 1 << 3 ) -1 );
-
-				//std::cerr << out( prevFrameInd ) << out( dist ) << std::endl;
-
-				//std::cout << type << " " << i << " " << j << " " << prevFrameInd << " " << dist << std::endl;
+				uint8_t prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
+				uint8_t dist = info & ( ( 1 << 3 ) -1 );
 
 				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i, j - ( dist + 1 ) ) );
 			}
@@ -178,24 +174,20 @@ void decode( int numCurrFrame ){
 		haveFrame[2] = haveFrame[3] = false;
 		setFrame = true;
 
-		//std::cout << 0 << " " << numCurrFrame << std::endl;
 	}else if( !haveFrame[2] || currDiff >= MAX_DIFF / 10 ){
 		prevFrame[2].setFrame( currFrame );
 		haveFrame[2] = true;
 		setFrame = true;
 
-		//std::cout << 2 << " " << numCurrFrame << std::endl;
 	}else if( !haveFrame[3] || currDiff >= MAX_DIFF / 50 ){
 		prevFrame[3].setFrame( currFrame );
 		haveFrame[3] = true;
 		setFrame = true;
 
-		//std::cout << 3 << " " << numCurrFrame << std::endl;
 	}
 
 	if( numCurrFrame % 7 == 0 and !setFrame ){
 		prevFrame[1].setFrame( currFrame );
-		//std::cout << 1 << " " << numCurrFrame << std::endl;
 	}
 
 	lastFrame.setFrame( currFrame );

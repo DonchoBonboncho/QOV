@@ -5,23 +5,23 @@
 class Pixel{
 
 	private:
-		int r;
-		int g;
-		int b;
+		uint8_t r;
+		uint8_t g;
+		uint8_t b;
 
 	public:
 	Pixel( ){
-		r = b = g = 0;
+		reset();
 	}
   
-  	Pixel( int _r, int _g, int _b ){
+  	Pixel( uint8_t _r, uint8_t _g, uint8_t _b ){
   		r = _r;
   		g = _g;
   		b = _b;
   	}
 
 	// setters
-	void setRGB( int _r, int _g, int _b ){
+	void setRGB( uint8_t _r, uint8_t _g, uint8_t _b ){
 		r = _r;
 		g = _g;
 		b = _b;
@@ -34,42 +34,41 @@ class Pixel{
 	}
 
 	void reset( ){
-		Pixel a = Pixel();
-
-		r = a.r;
-		g = a.g;
-		b = a.b;
+		r = 0;
+		g = 0;
+		b = 0;
 	}
 
-	void setR( int _r ){
+	void setR( uint8_t _r ){
 		r = _r;
 	}
 
-	void setG( int _g ){
+	void setG( uint8_t _g ){
 		g = _g;
 	}
-	void setB( int _b ){
+	void setB( uint8_t _b ){
 		b = _b;
 	}
 
 	// getters
-	int getR( ) const{
+	uint8_t getR( ) const{
 		return r;
 	}
 
-	int getG( ) const{
+	uint8_t getG( ) const{
 		return g;
 	}
 
-	int getB( ) const{
+	uint8_t getB( ) const{
 		return b;
 	}
 
-	Pixel getPixel( ) const{
-		return Pixel( r, g, b );
+	bool isZero( ) const{
+		if( r || g || b ) return false;
+		return true;
 	}
 
-	bool operator ==( const Pixel& currP ){
+	bool operator ==( const Pixel& currP ) const{
 		if( r != currP.r ) return false;
 		if( g != currP.g ) return false;
 		if( b != currP.b ) return false;
@@ -77,7 +76,7 @@ class Pixel{
 	}
 
 	void print( std::ostream& os )const{
-		os << r << " " << g << " " << b << std::endl;
+		os << (int)r << " " << (int)g << " " << (int)b << std::endl;
 	}
 
 };
@@ -102,16 +101,16 @@ class Frame{
 	}
 
 	Pixel getPixel( int x, int y ) const{
-		return pixels[x][y].getPixel();
+		return pixels[x][y];
 	}
 
 	long long getDiff( const Frame& a ){
 		long long diff = 0;
 		for( int i=0 ; i < a.FrameH ; i ++ ){
 			for( int j=0 ; j < a.FrameW ; j ++ ){
-				diff += abs( a.getPixel( i, j ).getR() - pixels[i][j].getR() );
-				diff += abs( a.getPixel( i, j ).getG() - pixels[i][j].getG() );
-				diff += abs( a.getPixel( i, j ).getB() - pixels[i][j].getB() );
+				diff += abs( a.pixels[i][j].getR() - pixels[i][j].getR() );
+				diff += abs( a.pixels[i][j].getG() - pixels[i][j].getG() );
+				diff += abs( a.pixels[i][j].getB() - pixels[i][j].getB() );
 			}
 		}
 		return diff;
@@ -127,14 +126,18 @@ class Frame{
 		pixels[x][y] = p;
 	}
 
-	void setPixelRGB( int r, int b, int g, int x, int y ){
+	void setPixelRGB( uint8_t r, uint8_t b, uint8_t g, int x, int y ){
 		pixels[x][y].setRGB( r, g, b );
 	}
 
 	void setFrame( const Frame& a ){
+		if( FrameH == -1 || FrameW == -1 ){
+			FrameH = a.FrameH;
+			FrameW = a.FrameW;
+			init();
+		}
 		FrameH = a.FrameH;
 		FrameW = a.FrameW;
-		init();
 		for( int i=0 ; i < FrameH ; i++ ){
 			for( int j=0 ; j < FrameW ; j++ ){
 				pixels[i][j].setPixel( a.getPixel( i, j ) );
@@ -159,7 +162,7 @@ std::string inBinary( int curr ){
 		cp >>= 1;
 	}
 
-	while( nas.size() < 8 ) nas = nas + "0";
+	while( (int)nas.size() < 8 ) nas = nas + "0";
 	
 	std::reverse( nas.begin(), nas.end() );
 	return nas;
@@ -169,7 +172,7 @@ std::string inBinary( int curr ){
 std::string getFramNum( int numFrame , int sz = 4 ){
 
 	std::string nas = std::to_string( numFrame );
-	while( nas.size() < sz ) nas = "0" + nas;
+	while( (int)nas.size() < sz ) nas = "0" + nas;
 
 	return nas;
 }

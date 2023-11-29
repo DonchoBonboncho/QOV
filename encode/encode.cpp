@@ -1,5 +1,4 @@
 /*
-hashVal
 	OPERATIONS:
 
 	0 0 0 | _ _ _ _ _		- run
@@ -8,6 +7,7 @@ hashVal
 	0 1 1 | _ _ _ _ _ x4	- new
 	1 0 0 | _ _ _ _ _		- last frame
 	1 0 1 | _ _ _ _ _		- prev frames
+	1 1 1 | _ _ _ _ _		- ?
 
 */
 #include "../QOV.h"
@@ -27,12 +27,12 @@ using namespace cv;
 
 const int MAX_FRAME_H = 1080;
 const int MAX_FRAME_W = 1920;
-const int modHash = 32;
+const uint8_t modHash = 32;
 const long long MAX_DIFF = 1586304000;
 
-int hashTable[modHash];
+uint8_t hashTable[modHash];
 bool hashViz[modHash];
-int numHash = 0;
+uint8_t numHash = 0;
 
 Pixel valHash[modHash];
 
@@ -48,9 +48,6 @@ Frame prevFrames[4];
 bool haveFrame[4];
 // 0 - I frame , 1 - 3 P frames
 
-
-long long cnt5 = 0;
-long long cnt6 = 0;
 void encode( int numCurrFrame ){
 
 	std::string pathPref = "../frames/";
@@ -68,33 +65,8 @@ void encode( int numCurrFrame ){
 		return ;
 	}
 
-#ifdef SMALL_TEST
-
-	int smallH = 1000;
-	int smallW = 1000;
-	Frame smallFrame( smallH, smallW );
-	for( int i=0 ; i < smallH ; i++ ){
-		for( int j=0 ; j < smallW ; j++ ){
-			int currR = i + ( rand() % ( i+1 ) );
-			currR %= 256;
-			int currG = i + ( rand() % ( i+1 ) );
-			currG %= 256;
-			int currB = i + ( rand() % ( i+1 ) );
-			currB %= 256;
-			Pixel currPixel( currR, currG, currB );
-			smallFrame.setPixelPixel( currPixel, i, j );
-		}
-	}
-
-	IMG_H = smallH;
-	IMG_W = smallW;
-
-#else
-
 	IMG_H = img.rows;
 	IMG_W = img.rows;
-
-#endif
 
 	if( firstTime ){
 
@@ -104,15 +76,14 @@ void encode( int numCurrFrame ){
 	}
 
 	Frame currFrame( IMG_H, IMG_W );
-	Pixel prev( 12345, 12345, 12345 );
-	int cntRun = 0;
-
-	for( int i=0 ; i < modHash ; i++ ){
+	Pixel prev( 255, 255, 255 );
+	uint8_t cntRun = 0;
+	for( uint8_t i=0 ; i < modHash ; i++ ){
 		hashViz[i] = false;
 		valHash[i].reset();
 	}
 	
-	for( int i=0 ; i < modHash ; i++ ){
+	for( uint8_t i=0 ; i < modHash ; i++ ){
 		valHash[i].reset();
 		hashViz[i] = false;
 	}
@@ -121,15 +92,12 @@ void encode( int numCurrFrame ){
 	for(int i=0; i < IMG_H ; i++) {
 		for(int j=0; j < IMG_W; j++) {
 
-#ifdef SMALL_TEST
-			Pixel currPixel = smallFrame.getPixel( i, j );
-#else
-			int b = img.at< cv::Vec3b>( i, j )[0];
-  			int g = img.at< cv::Vec3b>( i, j )[1];
-  			int r = img.at< cv::Vec3b>( i, j )[2];
+			uint8_t b = img.at< cv::Vec3b>( i, j )[0];
+  			uint8_t g = img.at< cv::Vec3b>( i, j )[1];
+  			uint8_t r = img.at< cv::Vec3b>( i, j )[2];
 
   			Pixel currPixel( r, g, b );
-#endif
+
 			currPixel.print( std::cout );
 			currFrame.setPixelPixel( currPixel, i, j );
 
@@ -138,15 +106,11 @@ void encode( int numCurrFrame ){
 
 			if( ( i || j ) and currPixel == prev ){
 				cntRun ++;
-#ifdef SMALL_TEST
-				if( cntRun < ( 1 << 5 )-1 and !( i == smallH-1 and j == smallW-1 ) ) continue;
-#else
 				if( cntRun < ( 1 << 5 )-1 and !( i == IMG_H-1 and j == IMG_W-1 ) ) continue;
-#endif
 			}
 			if( cntRun ){
-				int type = 0;
-				int info;
+				uint8_t type = 0;
+				uint8_t info;
 				info = ( type << 5 );
 				info |= cntRun;
 				cntRun = 0;
@@ -162,9 +126,9 @@ void encode( int numCurrFrame ){
 				hashViz[currHash] = true;
 
 				int currInd = hashTable[ currHash ];
-				int type = 2;
+				uint8_t type = 2;
 
-				int info = 0;
+				uint8_t info = 0;
 				info  = ( type << 5 );
 				info |= currInd;
 
@@ -179,15 +143,15 @@ void encode( int numCurrFrame ){
 
 				// prev frame
 				// _ _ _ | _  _ _ _ _
-				//  type  r/u   dist 
+				//  type  l/u   dist 
 
-				for( int r=0 ; !oke and r < (1 << 4) ; r++){
+				for( uint8_t r=0 ; !oke and r < (1 << 4) ; r++){
 					if( i - r < 0 ) break;
-					if( lastFrame.getPixel( i - r, j ) == currPixel.getPixel() ){
+					if( lastFrame.getPixel( i - r, j ) == currPixel ){
 
-						int type = 4;
+						uint8_t type = 4;
 
-						int info = ( type << 5 );
+						uint8_t info = ( type << 5 );
 						info |= ( 1 << 4 );
 						info |= r;
 
@@ -198,13 +162,13 @@ void encode( int numCurrFrame ){
 					if( oke ) break;
 				}
 
-				for( int c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
+				for( uint8_t c = 0 ; !oke and c < ( 1 << 4 ) ; c++ ){
 					if( j - c < 0 ) break;
-					if( lastFrame.getPixel( i, j - c ) == currPixel.getPixel() ){
+					if( lastFrame.getPixel( i, j - c ) == currPixel ){
 
-						int type = 4;
+						uint8_t type = 4;
 						
-						int info = ( type << 5 );
+						uint8_t info = ( type << 5 );
 						info |= c;
 
 						fout.write( (char*)&info, sizeof( info ) );
@@ -220,20 +184,18 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			for( int frameInd = 0 ; frameInd < 4 ; frameInd ++ ){
+			for( uint8_t frameInd = 0 ; frameInd < 4 ; frameInd ++ ){
 				// 1 0 1 | _ _   _ _ _
-				//  type   num  dist left
+				//  type   num  dist up
 				if( !haveFrame[frameInd] ) continue;
 				
-				for( int r=0 ; !oke and r < ( 1 << 3 ) ; r ++ ){
+				for( uint8_t r=0 ; !oke and r < ( 1 << 3 ) ; r ++ ){
 					if( i - ( r + 1 ) < 0 ) break;
 					if( prevFrames[frameInd].getPixel( i-( r + 1 ), j ) == currPixel ){
 
-						int type = 5;
+						uint8_t type = 5;
 
-						cnt5 ++;
-
-						int info = ( type << 5 );
+						uint8_t info = ( type << 5 );
 						info |= ( frameInd << 3 );
 						info |= r;
 
@@ -249,20 +211,18 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			for( int frameInd = 0 ; frameInd < 4 ; frameInd ++ ){
+			for( uint8_t frameInd = 0 ; frameInd < 4 ; frameInd ++ ){
 				// 1 1 0 | _ _   _ _ _
 				//  type   num  dist left
 				if( !haveFrame[frameInd] ) continue;
 				
-				for( int c=0 ; !oke and c < ( 1 << 3 ) ; c ++ ){
+				for( uint8_t c=0 ; !oke and c < ( 1 << 3 ) ; c ++ ){
 					if( j - ( c + 1 ) < 0 ) break;
 					if( prevFrames[frameInd].getPixel( i, j - ( c + 1 ) ) == currPixel ){
 
-						int type = 6;
+						uint8_t type = 6;
 
-						cnt6 ++;
-
-						int info = ( type << 5 );
+						uint8_t info = ( type << 5 );
 						info |= ( frameInd << 3 );
 						info |= c;
 
@@ -278,19 +238,19 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			int dr = prev.getR() - currPixel.getR();
-			int dg = prev.getG() - currPixel.getG();
-			int db = prev.getB() - currPixel.getB();
+			int8_t dr = prev.getR() - currPixel.getR();
+			int8_t dg = prev.getG() - currPixel.getG();
+			int8_t db = prev.getB() - currPixel.getB();
 			if( dr >= -15 and dr <= 16 && dg >= -7 and dg <= 8 && db >= -7 and db <= 8 ){
 				// diff
 				// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
-				int type = 1;
-				int info1 = 0;
+				uint8_t type = 1;
+				uint8_t info1 = 0;
 				info1 = ( type << 5 );
 				dr += 15;
 				info1 |= dr;
 
-				int info2 = 0;
+				uint8_t info2 = 0;
 				dg += 7;
 				info2 = ( dg << 4 );
 
@@ -304,18 +264,18 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			int type = 3;
-			int infoType = ( type << 5 );
-			int infoR = currPixel.getR();
-			int infoG = currPixel.getG();
-			int infoB = currPixel.getB();
+			uint8_t type = 3;
+			uint8_t infoType = ( type << 5 );
+			uint8_t infoR = currPixel.getR();
+			uint8_t infoG = currPixel.getG();
+			uint8_t infoB = currPixel.getB();
 
 			fout.write( (char *) &infoType, sizeof( infoType ) );
 			fout.write( (char *) &infoR, sizeof( infoR ) );
 			fout.write( (char *) &infoG, sizeof( infoG ) );
 			fout.write( (char *) &infoB, sizeof( infoB ) );
 
-  			if( valHash[currHash] == Pixel() and numHash < modHash ){
+  			if( valHash[currHash].isZero() and numHash < modHash ){
   				valHash[ currHash ] = currPixel;
   				hashTable[ currHash ] = numHash ++;
   			}
@@ -371,15 +331,13 @@ int main(){
 
 	std::srand( 69 );
 
-	int numFrames = 50;
+	int numFrames = 20;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
 	firstTime = true;
 	for( int i=1 ; i <= numFrames ; i++ ){
 		encode( i );
 	}
-
-	std::cerr << out( cnt5 ) << out( cnt6 ) << std::endl;
 
 	fout.close();
 	if(!fout.good()) {
