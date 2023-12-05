@@ -38,7 +38,7 @@ void decode( int numCurrFrame ){
 
 	Frame currFrame( IMG_H, IMG_W );
 
-	std::cerr << out( numCurrFrame ) << std::endl;
+	//std::cerr << out( numCurrFrame ) << std::endl;
 
 	uint8_t runNum = 0;
 	uint8_t numHash = 0;
@@ -66,37 +66,10 @@ void decode( int numCurrFrame ){
 			fin.read( (char*) &info, sizeof( info ) );
 
 			uint8_t cpInfo = info;
-			uint8_t type = cpInfo >> 5;
-			if( type == 0 ){
-				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
-				prevPixel.print( std::cout );
-				runNum --;
-				currFrame.setPixelPixel( prevPixel, i, j );
-				continue;
-			}
-			if( type == 1 ){
-				int8_t dr = info & ( ( 1 << 5 ) -1 );
-				dr -= 15;
-				newPixel.setR( prevPixel.getR() - dr );
 
-				uint8_t info2;
-				fin.read( (char*) &info2, sizeof( info2 ) );
 
-				int8_t dg = ( info2 >> 4 );
-				dg -= 7;
-				newPixel.setG( prevPixel.getG() - dg );
-
-				int8_t db = info2 & ( ( 1 << 4 ) -1 );
-				db -= 7;
-				newPixel.setB( prevPixel.getB() - db );
-			}
-				
-			if( type == 2 ){
-				uint8_t currHashInd =  info & ( ( 1 << 5 ) -1 );
-				newPixel.setPixel( hashVal[currHashInd] );
-			}
-
-			if( type == 3 ){
+			if( cpInfo == (uint8_t)255 ){
+				//std::cerr << out( i ) << out( j ) << out( (int)cpInfo ) << std::endl;
 
 				uint8_t _r, _g, _b;
 				fin.read( (char*) &_r, sizeof( _r ) );
@@ -115,7 +88,42 @@ void decode( int numCurrFrame ){
 					hashVal[numHash].setPixel( newPixel );
 					hashTable[currHash] = numHash ++;
 				}
+				prevPixel = newPixel;
 
+				continue;
+			}
+			uint8_t type = cpInfo >> 5;
+			//std::cerr << out( (int)type ) << out( i ) << out( j ) << std::endl;
+			if( type == 0 ){
+				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
+				prevPixel.print( std::cout );
+				runNum --;
+				currFrame.setPixelPixel( prevPixel, i, j );
+				continue;
+			}
+			if( type == 1 ){
+				int8_t dg = info & ( ( 1 << 5 ) -1 );
+				dg -= 15;
+
+				uint8_t info2;
+				fin.read( (char*) &info2, sizeof( info2 ) );
+
+				int8_t dgr = ( info2 >> 4 );
+				dgr -= 7;
+				int8_t dr = dg - dgr;
+				// dg - dr = dgr	dr = dg - dgr
+				int8_t dgb = info2 & ( ( 1 << 4 ) -1 );
+				dgb -= 7;
+				int8_t db = dg - dgb;
+
+				newPixel.setR( prevPixel.getR() - dr );
+				newPixel.setB( prevPixel.getB() - db );
+				newPixel.setG( prevPixel.getG() - dg );
+			}
+				
+			if( type == 3 ){
+				uint8_t currHashInd =  info & ( ( 1 << 5 ) -1 );
+				newPixel.setPixel( hashVal[currHashInd] );
 			}
 
 			if( type == 4 ){
@@ -131,7 +139,7 @@ void decode( int numCurrFrame ){
 				}
 			}
 					
-			if( type == 5 ){
+			if( type == 6 ){
 
 				uint8_t buff = info;
 				
@@ -145,11 +153,13 @@ void decode( int numCurrFrame ){
 				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i - ( dist + 1 ), j ) );
 			}
 
-			if( type == 6 ){
+			if( type == 7 ){
 				uint8_t buff = info;
 				
 				uint8_t prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
 				uint8_t dist = info & ( ( 1 << 3 ) -1 );
+
+				std::cerr << out( (int)prevFrameInd ) << out( (int)dist ) << out( numCurrFrame ) << std::endl;
 
 				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i, j - ( dist + 1 ) ) );
 			}
@@ -192,6 +202,27 @@ void decode( int numCurrFrame ){
 
 	lastFrame.setFrame( currFrame );
 	firstTime = false;
+
+	//std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
+	Mat currMatImage( IMG_H, IMG_W, CV_8UC3, Scalar(0,0,0));
+  	for( int i=0 ; i < IMG_H ; i++ ){
+  		for( int j=0 ; j < IMG_W ; j++ ){
+  
+    		uint8_t &b = currMatImage.at< cv::Vec3b>( i, j )[0];
+  			uint8_t &g = currMatImage.at< cv::Vec3b>( i, j )[1];
+  			uint8_t &r = currMatImage.at< cv::Vec3b>( i, j )[2];
+
+			r = currFrame.getPixel( i, j ).getR();
+			g = currFrame.getPixel( i, j ).getG();
+			b = currFrame.getPixel( i, j ).getB();
+
+			//std::cerr << out( (int)r ) << out( (int)b ) << out( (int)g ) << std::endl;
+
+  		}
+  	}
+	//std::cerr << currMatImage << std::endl;
+
+	images.push_back( currMatImage );
 }
 
 int main(){
@@ -214,6 +245,15 @@ int main(){
 		decode( i );
 	}
 
+	Size S = Size( IMG_W, IMG_H );
+	//VideoWriter record("kuche.avi", cv::VideoWriter::fourcc('M','J','P','G'), 30, S, true);
+	VideoWriter record("kuche.avi", VideoWriter::fourcc('P','I','M','1'), 30, S, true);
+
+	std::cerr << out( images.size() ) << std::endl;
+	for( int i=0 ; i < (int)images.size() ; i++ ){
+		record << images[i];
+	}
+	record.release();
 
 #ifdef TIME
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();

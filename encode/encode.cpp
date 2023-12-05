@@ -2,12 +2,14 @@
 	OPERATIONS:
 
 	0 0 0 | _ _ _ _ _		- run
-	0 0 1 | _ _ _ _ _ x2	- diff
-	0 1 0 | _ _ _ _ _ 		- hash table ind
-	0 1 1 | _ _ _ _ _ x4	- new
+	0 0 1 | _ _ _ _ _ x2	- diff1
+	0 1 0 | _ _ _ _ _		- diff2
+	1 1 1 1 1 1 1 1   x4	- new
+	0 1 1 | _ _ _ _ _ 		- hash table ind
 	1 0 0 | _ _ _ _ _		- last frame
-	1 0 1 | _ _ _ _ _		- prev frames
-	1 1 1 | _ _ _ _ _		- ?
+	1 0 1 | _ _ _ _ _		- ???? last frame ???
+	1 1 0 | _ _ _ _ _		- prev frames up
+	1 1 1 | _ _ _ _ _		- prev frames left
 
 */
 #include "../QOV.h"
@@ -48,11 +50,12 @@ Frame prevFrames[4];
 bool haveFrame[4];
 // 0 - I frame , 1 - 3 P frames
 
+bool endImg = false;
 void encode( int numCurrFrame ){
 
-	std::string pathPref = "../frames/";
+	std::string pathPref = "../frames/kubche/";
 	std::string pathImgName = getFramNum( numCurrFrame );
-	std::string pathSuff = ".png";
+	std::string pathSuff = ".bmp";
 	
 	std::string path = pathPref + pathImgName + pathSuff;
 
@@ -62,17 +65,17 @@ void encode( int numCurrFrame ){
 
     if(img.empty()) {
 		std::cerr << " can't open the image " << std::endl;
+		endImg = true;
 		return ;
 	}
 
-	IMG_H = img.rows;
-	IMG_W = img.rows;
-
 	if( firstTime ){
+		IMG_H = img.rows;
+		IMG_W = img.cols;
 
+		std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
 		fout.write( (char *)&IMG_H, sizeof( IMG_H ) );
 		fout.write( (char *)&IMG_W, sizeof( IMG_W ) );
-		std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
 	}
 
 	Frame currFrame( IMG_H, IMG_W );
@@ -120,13 +123,13 @@ void encode( int numCurrFrame ){
 
 
 			// hash
-			// 0 1 0 | _ _ _ _ _
+			// 0 1 1 | _ _ _ _ _
 			int currHash = ( currPixel.getR() * 3 + currPixel.getG() * 5 + currPixel.getB() * 7 ) % modHash;
 			if( !hashViz[currHash] and valHash[currHash] == currPixel ){
 				hashViz[currHash] = true;
 
 				int currInd = hashTable[ currHash ];
-				uint8_t type = 2;
+				uint8_t type = 3;
 
 				uint8_t info = 0;
 				info  = ( type << 5 );
@@ -193,7 +196,7 @@ void encode( int numCurrFrame ){
 					if( i - ( r + 1 ) < 0 ) break;
 					if( prevFrames[frameInd].getPixel( i-( r + 1 ), j ) == currPixel ){
 
-						uint8_t type = 5;
+						uint8_t type = 6;
 
 						uint8_t info = ( type << 5 );
 						info |= ( frameInd << 3 );
@@ -216,15 +219,17 @@ void encode( int numCurrFrame ){
 				//  type   num  dist left
 				if( !haveFrame[frameInd] ) continue;
 				
-				for( uint8_t c=0 ; !oke and c < ( 1 << 3 ) ; c ++ ){
+				for( uint8_t c=0 ; !oke and c < ( 1 << 3 ) -1 ; c ++ ){
 					if( j - ( c + 1 ) < 0 ) break;
 					if( prevFrames[frameInd].getPixel( i, j - ( c + 1 ) ) == currPixel ){
 
-						uint8_t type = 6;
+						uint8_t type = 7;
 
 						uint8_t info = ( type << 5 );
 						info |= ( frameInd << 3 );
 						info |= c;
+
+						std::cerr << inBinary( info ) << out( i ) << out( j ) << std::endl;
 
 						fout.write( (char*)&info, sizeof( info ) );
 						oke = true;
@@ -241,21 +246,25 @@ void encode( int numCurrFrame ){
 			int8_t dr = prev.getR() - currPixel.getR();
 			int8_t dg = prev.getG() - currPixel.getG();
 			int8_t db = prev.getB() - currPixel.getB();
-			if( dr >= -15 and dr <= 16 && dg >= -7 and dg <= 8 && db >= -7 and db <= 8 ){
+
+			int8_t dgr = dg - dr;
+			int8_t dgb = dg - db;
+
+			if( dg >= -15 and dg <= 16 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
 				// diff
 				// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
 				uint8_t type = 1;
 				uint8_t info1 = 0;
 				info1 = ( type << 5 );
-				dr += 15;
-				info1 |= dr;
+				dg += 15;
+				info1 |= dg;
 
 				uint8_t info2 = 0;
-				dg += 7;
-				info2 = ( dg << 4 );
+				dgr += 7;
+				info2 = ( dgr << 4 );
 
-				db += 7;
-				info2 |= db;
+				dgb += 7;
+				info2 |= dgb;
 
 				fout.write( (char * ) &info1, sizeof( info1 ) );
 				fout.write( (char * ) &info2, sizeof( info2 ) );
@@ -264,12 +273,12 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			uint8_t type = 3;
-			uint8_t infoType = ( type << 5 );
+			uint8_t infoType = 255;
 			uint8_t infoR = currPixel.getR();
 			uint8_t infoG = currPixel.getG();
 			uint8_t infoB = currPixel.getB();
 
+			//std::cerr << out( (int)infoType ) << out( (int)infoR ) << out( (int)infoG ) << out( (int)infoB ) << std::endl;
 			fout.write( (char *) &infoType, sizeof( infoType ) );
 			fout.write( (char *) &infoR, sizeof( infoR ) );
 			fout.write( (char *) &infoG, sizeof( infoG ) );
@@ -329,12 +338,12 @@ int main(){
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
 
-	std::srand( 69 );
-
-	int numFrames = 20;
+	int numFrames = 1;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
 	firstTime = true;
+
+	for( int i=0 ; i < 4 ; i ++ ) haveFrame[i] = false;
 	for( int i=1 ; i <= numFrames ; i++ ){
 		encode( i );
 	}
