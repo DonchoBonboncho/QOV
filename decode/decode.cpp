@@ -18,6 +18,9 @@ const uint8_t modHash = 32;
 uint8_t hashTable[modHash];
 Pixel hashVal[modHash];
 
+std::pair< int8_t, int8_t> lastFrameDelta[64] =  {  { -5 , 0 }  ,  { -4 , -1 }  ,  { -4 , 0 }  ,  { -4 , 1 }  ,  { -3 , -3 }  ,  { -3 , -2 }      ,  { -3 , -1 }  ,  { -3 , 0 }  ,  { -3 , 1 }  ,  { -3 , 2 }  ,  { -3 , 3 }  ,  { -2 , -3 }  ,  { -2 , -2 }  ,  { -2 , -1 }  ,  { -2 , 0 }      ,  { -2 , 1 }  ,  { -2 , 2 }  ,  { -2 , 3 }  ,  { -1 , -4 }  ,  { -1 , -3 }  ,  { -1 , -2 }  ,  { -1 , -1 }  ,  { -1 , 0 }  ,  { -1 , 1 }      ,  { -1 , 2 }  ,  { -1 , 3 }  ,  { -1 , 4 }  ,  { 0 , -5 }  ,  { 0 , -4 }  ,  { 0 , -3 }  ,  { 0 , -2 }  ,  { 0 , -1 }  ,  { 0 , 1 }  ,  { 0     , 2 }  ,  { 0 , 3 }  ,  { 0 , 4 }  ,  { 0 , 5 }  ,  { 1 , -4 }  ,  { 1 , -3 }  ,  { 1 , -2 }  ,  { 1 , -1 }  ,  { 1 , 0 }  ,  { 1 , 1 }  ,      { 1 , 2 }  ,  { 1 , 3 }  ,  { 1 , 4 }  ,  { 2 , -3 }  ,  { 2 , -2 }  ,  { 2 , -1 }  ,  { 2 , 0 }  ,  { 2 , 1 }  ,  { 2 , 2 }  ,  { 2 , 3 }      ,  { 3 , -3 }  ,  { 3 , -2 }  ,  { 3 , -1 }  ,  { 3 , 0 }  ,  { 3 , 1 }  ,  { 3 , 2 }  ,  { 3 , 3 }  ,  { 4 , -1 }  ,  { 4 , 0 }  ,  { 4 ,     1 }  ,  { 5 , 0 }  };
+
+
 bool vizHash[modHash];
 
 std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
@@ -38,7 +41,7 @@ void decode( int numCurrFrame ){
 
 	Frame currFrame( IMG_H, IMG_W );
 
-	//std::cerr << out( numCurrFrame ) << std::endl;
+	std::cerr << out( numCurrFrame ) << std::endl;
 
 	uint8_t runNum = 0;
 	uint8_t numHash = 0;
@@ -66,15 +69,21 @@ void decode( int numCurrFrame ){
 			fin.read( (char*) &info, sizeof( info ) );
 
 			uint8_t cpInfo = info;
+			uint8_t type = cpInfo >> 5;
+			if( type == 0 ){
+				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
+				prevPixel.print( std::cout );
+				runNum --;
+				currFrame.setPixelPixel( prevPixel, i, j );
+				continue;
+			}
 
-
-			if( cpInfo == (uint8_t)255 ){
-				//std::cerr << out( i ) << out( j ) << out( (int)cpInfo ) << std::endl;
+			if( info == (uint8_t)255 ){
 
 				uint8_t _r, _g, _b;
 				fin.read( (char*) &_r, sizeof( _r ) );
 				newPixel.setR( _r );
-				
+
 				fin.read( (char*) &_g, sizeof( _g ) );
 				newPixel.setG( _g );
 
@@ -88,19 +97,14 @@ void decode( int numCurrFrame ){
 					hashVal[numHash].setPixel( newPixel );
 					hashTable[currHash] = numHash ++;
 				}
+
+				newPixel.print( std::cout );
+				currFrame.setPixelPixel( newPixel, i, j );
 				prevPixel = newPixel;
 
 				continue;
 			}
-			uint8_t type = cpInfo >> 5;
-			//std::cerr << out( (int)type ) << out( i ) << out( j ) << std::endl;
-			if( type == 0 ){
-				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
-				prevPixel.print( std::cout );
-				runNum --;
-				currFrame.setPixelPixel( prevPixel, i, j );
-				continue;
-			}
+
 			if( type == 1 ){
 				int8_t dg = info & ( ( 1 << 5 ) -1 );
 				dg -= 15;
@@ -110,39 +114,54 @@ void decode( int numCurrFrame ){
 
 				int8_t dgr = ( info2 >> 4 );
 				dgr -= 7;
+				// dgr = dg - dr  dr = dg - dgr
 				int8_t dr = dg - dgr;
-				// dg - dr = dgr	dr = dg - dgr
+
 				int8_t dgb = info2 & ( ( 1 << 4 ) -1 );
 				dgb -= 7;
 				int8_t db = dg - dgb;
 
 				newPixel.setR( prevPixel.getR() - dr );
-				newPixel.setB( prevPixel.getB() - db );
 				newPixel.setG( prevPixel.getG() - dg );
+				newPixel.setB( prevPixel.getB() - db );
 			}
-				
+
+			if( type == 2 ){
+				int8_t dg  = ( info & ( ( 1 << 5 ) -1 ) ) >> 3;
+				int8_t dgr = ( info & ( ( 1 << 3 ) -1 ) ) >> 1;
+				int8_t dgb = info & 1;
+
+				dg -= 1;
+				dgr -= 1;
+
+				int8_t dr = dg - dgr;
+				int8_t db = dg - dgb;
+
+				newPixel.setR( prevPixel.getR() - dr );
+				newPixel.setG( prevPixel.getG() - dg );
+				newPixel.setB( prevPixel.getB() - db );
+			}
+
 			if( type == 3 ){
 				uint8_t currHashInd =  info & ( ( 1 << 5 ) -1 );
 				newPixel.setPixel( hashVal[currHashInd] );
 			}
 
-			if( type == 4 ){
-				bool rows = info & ( 1 << 4 );
+  			if( type == 4 || type == 5 ){
+  
+  				int ind = info & ( ( 1 << 5 ) -1 );
+  				if( type == 5 ) ind += 32;
 
-				uint8_t dist = info & ( ( 1 << 4 ) -1 );
-				if( rows ){
-					Pixel currPixel = lastFrame.getPixel( i-dist, j );
-					newPixel.setPixel( currPixel );
-				}else{
-					Pixel currPixel = lastFrame.getPixel( i, j - dist );
-					newPixel.setPixel( currPixel );
-				}
-			}
-					
+  				int currX = lastFrameDelta[ind].first + i;
+  				int currY = lastFrameDelta[ind].second + j;
+
+				newPixel.setPixel( lastFrame.getPixel( currX, currY ) );
+  			}
+
 			if( type == 6 ){
 
 				uint8_t buff = info;
-				
+
 				uint8_t prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
 				uint8_t dist = info & ( ( 1 << 3 ) -1 );
 
@@ -155,11 +174,9 @@ void decode( int numCurrFrame ){
 
 			if( type == 7 ){
 				uint8_t buff = info;
-				
+
 				uint8_t prevFrameInd = ( buff & ( ( 1 << 5 ) -1 ) ) >> 3;
 				uint8_t dist = info & ( ( 1 << 3 ) -1 );
-
-				std::cerr << out( (int)prevFrameInd ) << out( (int)dist ) << out( numCurrFrame ) << std::endl;
 
 				newPixel.setPixel( prevFrame[prevFrameInd].getPixel( i, j - ( dist + 1 ) ) );
 			}
@@ -193,42 +210,37 @@ void decode( int numCurrFrame ){
 		prevFrame[3].setFrame( currFrame );
 		haveFrame[3] = true;
 		setFrame = true;
-
 	}
 
 	if( numCurrFrame % 7 == 0 and !setFrame ){
 		prevFrame[1].setFrame( currFrame );
 	}
 
-	lastFrame.setFrame( currFrame );
-	firstTime = false;
-
-	//std::cerr << out( IMG_H ) << out( IMG_W ) << std::endl;
 	Mat currMatImage( IMG_H, IMG_W, CV_8UC3, Scalar(0,0,0));
-  	for( int i=0 ; i < IMG_H ; i++ ){
-  		for( int j=0 ; j < IMG_W ; j++ ){
-  
-    		uint8_t &b = currMatImage.at< cv::Vec3b>( i, j )[0];
-  			uint8_t &g = currMatImage.at< cv::Vec3b>( i, j )[1];
-  			uint8_t &r = currMatImage.at< cv::Vec3b>( i, j )[2];
+	for( int i=0 ; i < IMG_H ; i++ ){
+		for( int j=0 ; j < IMG_W ; j++ ){
+
+			uint8_t &b = currMatImage.at< cv::Vec3b>( i, j )[0];
+			uint8_t &g = currMatImage.at< cv::Vec3b>( i, j )[1];
+			uint8_t &r = currMatImage.at< cv::Vec3b>( i, j )[2];
 
 			r = currFrame.getPixel( i, j ).getR();
 			g = currFrame.getPixel( i, j ).getG();
 			b = currFrame.getPixel( i, j ).getB();
 
-			//std::cerr << out( (int)r ) << out( (int)b ) << out( (int)g ) << std::endl;
-
-  		}
-  	}
-	//std::cerr << currMatImage << std::endl;
+		}
+	}
 
 	images.push_back( currMatImage );
+
+	lastFrame.setFrame( currFrame );
+	firstTime = false;
 }
 
 int main(){
 
 #ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 #endif
 
 	int numFrames;
@@ -246,19 +258,28 @@ int main(){
 	}
 
 	Size S = Size( IMG_W, IMG_H );
-	//VideoWriter record("kuche.avi", cv::VideoWriter::fourcc('M','J','P','G'), 30, S, true);
-	VideoWriter record("kuche.avi", VideoWriter::fourcc('P','I','M','1'), 30, S, true);
+	VideoWriter record("Ananasko.avi", cv::VideoWriter::fourcc('p', 'n', 'g', ' '), 24, S, true);
+	//VideoWriter record("Ananasko.avi", cv::VideoWriter::fourcc('P','I','M','1'), 24, S, true);
 
-	std::cerr << out( images.size() ) << std::endl;
+	if( !record.isOpened() ){
+		std::cerr << " bruhmomento " << std::endl;
+	}
 	for( int i=0 ; i < (int)images.size() ; i++ ){
 		record << images[i];
+		//record.write( images[i] );
+		if (images[i].empty()) {
+			std::cerr << "problem" << std::endl;
+			break;
+		}
+
 	}
 	record.release();
 
+
 #ifdef TIME
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cerr << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	std::cerr << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 #endif
 
-    return 0;
+	return 0;
 }
