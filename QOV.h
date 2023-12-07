@@ -169,9 +169,9 @@ std::string inBinary( int curr ){
 }
 
 
-std::string getFramNum( int numFrame , int sz = 4 ){
+std::string getFramNum( int numFrame , int sz = 4, int start = 0 ){
 
-	std::string nas = std::to_string( numFrame );
+	std::string nas = std::to_string( numFrame + start );
 	while( (int)nas.size() < sz ) nas = "0" + nas;
 
 	return nas;

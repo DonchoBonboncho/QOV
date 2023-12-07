@@ -36,11 +36,14 @@ const int MAX_FRAME_H = 1080;
 const int MAX_FRAME_W = 1920;
 const uint8_t modHash = 32;
 const long long MAX_DIFF = 1586304000;
+const uint8_t NUM_PREV_FRAMES = 2;
 
 uint8_t hashTable[modHash];
 bool hashViz[modHash];
 uint8_t numHash = 0;
 std::pair< int8_t, int8_t> lastFrameDelta[64] =  {  { -5 , 0 }  ,  { -4 , -1 }  ,  { -4 , 0 }  ,  { -4 , 1 }  ,  { -3 , -3 }  ,  { -3 , -2 }  ,  { -3 , -1 }  ,  { -3 , 0 }  ,  { -3 , 1 }  ,  { -3 , 2 }  ,  { -3 , 3 }  ,  { -2 , -3 }  ,  { -2 , -2 }  ,  { -2 , -1 }  ,  { -2 , 0 }  ,  { -2 , 1 }  ,  { -2 , 2 }  ,  { -2 , 3 }  ,  { -1 , -4 }  ,  { -1 , -3 }  ,  { -1 , -2 }  ,  { -1 , -1 }  ,  { -1 , 0 }  ,  { -1 , 1 }  ,  { -1 , 2 }  ,  { -1 , 3 }  ,  { -1 , 4 }  ,  { 0 , -5 }  ,  { 0 , -4 }  ,  { 0 , -3 }  ,  { 0 , -2 }  ,  { 0 , -1 }  ,  { 0 , 1 }  ,  { 0 , 2 }  ,  { 0 , 3 }  ,  { 0 , 4 }  ,  { 0 , 5 }  ,  { 1 , -4 }  ,  { 1 , -3 }  ,  { 1 , -2 }  ,  { 1 , -1 }  ,  { 1 , 0 }  ,  { 1 , 1 }  ,  { 1 , 2 }  ,  { 1 , 3 }  ,  { 1 , 4 }  ,  { 2 , -3 }  ,  { 2 , -2 }  ,  { 2 , -1 }  ,  { 2 , 0 }  ,  { 2 , 1 }  ,  { 2 , 2 }  ,  { 2 , 3 }  ,  { 3 , -3 }  ,  { 3 , -2 }  ,  { 3 , -1 }  ,  { 3 , 0 }  ,  { 3 , 1 }  ,  { 3 , 2 }  ,  { 3 , 3 }  ,  { 4 , -1 }  ,  { 4 , 0 }  ,  { 4 , 1 }  ,  { 5 , 0 }  };
+
+std::pair< int8_t, int8_t > prevFrameDelta[32] =  {  { -3 , -1 }  ,  { -3 , 1 }  ,  { -2 , -2 }  ,  { -2 , -1 }  ,  { -2 , 0 }  ,  { -2 , 1 }  ,  { -2 , 2 }  ,  { -1 , -3 }  ,  { -1 , -2 }  ,  { -1 , -1 }  ,  { -1 , 0 }  ,  { -1 , 1 }  ,  { -1 , 2 }  ,  { -1 , 3 }  ,  { 0 , -2 }  ,  { 0 , -1 }  ,  { 0 , 1 }  ,  { 0 , 2 }  ,  { 1 , -3 }  ,  { 1 , -2 }  ,  { 1 , -1 }  ,  { 1 , 0 }  ,  { 1 , 1 }  ,  { 1 , 2 }  ,  { 1 , 3 }  ,  { 2 , -2 }  ,  { 2 , -1 }  ,  { 2 , 0 }  ,  { 2 , 1 }  ,  { 2 , 2 }  ,  { 3 , -1 }  ,  { 3 , 1 }  };
 
 Pixel valHash[modHash];
 
@@ -53,13 +56,15 @@ bool firstTime = true;
 
 Frame lastFrame;
 Frame prevFrames[4];
-bool haveFrame[4];
+bool haveFrame[2];
 
 bool STOP = false;
 void encode( int numCurrFrame ){
 
 	std::string pathPref = "../frames/kubche/";
-	std::string pathImgName = getFramNum( numCurrFrame );
+	std::string pathImgName = getFramNum( numCurrFrame, 4, 0 );
+	//std::string pathPref = "../frames/animaciq1/";
+	//std::string pathImgName = getFramNum( numCurrFrame, 6, 99 );
 	std::string pathSuff = ".bmp";
 
 	std::string path = pathPref + pathImgName + pathSuff;
@@ -88,6 +93,7 @@ void encode( int numCurrFrame ){
 	Frame currFrame( IMG_H, IMG_W );
 	Pixel prev( 255, 255, 255 );
 	uint8_t cntRun = 0;
+	uint8_t cntLastRun = 0;
 	for( uint8_t i=0 ; i < modHash ; i++ ){
 		hashViz[i] = false;
 		valHash[i].reset();
@@ -108,13 +114,15 @@ void encode( int numCurrFrame ){
 
 			Pixel currPixel( r, g, b );
 
-			currPixel.print( std::cout );
+			//currPixel.print( std::cout );
 			currFrame.setPixelPixel( currPixel, i, j );
+
+
 
 			//run operation
 			// 0 0 0 | _ _ _ _ _
 
-			if( ( i || j ) and currPixel == prev ){
+			if( cntLastRun == 0 and ( i || j ) and currPixel == prev ){
 				cntRun ++;
 				if( cntRun < ( 1 << 5 )-1 and !( i == IMG_H-1 and j == IMG_W-1 ) ) continue;
 			}
@@ -128,31 +136,51 @@ void encode( int numCurrFrame ){
 				if( currPixel == prev ) continue;
 			}
 
+			// same sa last frame
+			// 0 1 1
+			if( !firstTime and cntRun == 0 ){
+				if( lastFrame.getPixel( i, j ) == currPixel ){
+					cntLastRun++;
+					if( cntLastRun < ( 1 << 5 ) -1 and !( i == IMG_H-1 and j == IMG_W-1 ) ){
+						prev = currPixel;
+						continue;
+					}
+				}
+			}
 
-			// hash
-			// 0 1 0 | _ _ _ _ _
-			int currHash = ( currPixel.getR() * 3 + currPixel.getG() * 5 + currPixel.getB() * 7 ) % modHash;
-			if( !hashViz[currHash] and valHash[currHash] == currPixel ){
-				hashViz[currHash] = true;
-
-				int currInd = hashTable[ currHash ];
+			if( cntLastRun ){
 				uint8_t type = 3;
+				uint8_t info = ( type << 5 );
+				info |= cntLastRun;
+				cntLastRun = 0;
+				fout.write( (char*)&info, sizeof( info ) );
+				if( lastFrame.getPixel( i, j ) == currPixel ){
+					prev = currPixel;
+					continue;
+				}
+			}
 
-				uint8_t info = 0;
-				info  = ( type << 5 );
-				info |= currInd;
+			//run operation
+			// 0 0 0 | _ _ _ _ _
 
-				fout.write( (char *) & info, sizeof( info ) );
+			if( cntLastRun == 0 and ( i || j ) and currPixel == prev ){
+				cntRun ++;
+				if( cntRun < ( 1 << 5 )-1 and !( i == IMG_H-1 and j == IMG_W-1 ) ) continue;
+			}
 
-				prev = currPixel;
-				continue;
+			if( cntRun ){
+				uint8_t type = 0;
+				uint8_t info;
+				info = ( type << 5 );
+				info |= cntRun;
+				cntRun = 0;
+				fout.write( (char*) &info, sizeof( info ) );
+				if( currPixel == prev ) continue;
 			}
 			
 			bool oke = false;
   			if( !firstTime ){
-    			// last frame 1
-    			// _ _ _ | _ _ _ _ _
-    			//  type |  ind
+				// LAST FRAME OPERATOINS
     			for( size_t currInd=0 ; !oke and currInd < 64 ; currInd ++ ){
     
     				int currX = i + lastFrameDelta[currInd].first;
@@ -163,7 +191,6 @@ void encode( int numCurrFrame ){
     
     				if( lastFrame.getPixel( currX, currY ) == currPixel ){
     
-    					
     					uint8_t type;
     					uint8_t infoInd;
     					if( currInd < 32 ){
@@ -174,14 +201,11 @@ void encode( int numCurrFrame ){
     						infoInd = currInd - 32;
     					}
     
-    					//std::cout << i << " " << j << " " << (int)type << " " << currInd << " " << currX << " " << currY << std::endl;
+						//std::cout << i << " " << j << " " << currX << " " << currY << std::endl;
     
     					uint8_t info = ( type << 5 );
-    					assert( infoInd < 32 );
     					info |= infoInd;
-    
-    					if( currX == 1080 ) std::cerr << " bruhmomento " << std::endl;
-    					
+						
     					fout.write( (char *)&info, sizeof( info ) );
     					oke = true;
     					break;
@@ -194,59 +218,45 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			for( uint8_t frameInd = 0 ; frameInd < 4 ; frameInd ++ ){
-				// 1 0 1 | _ _   _ _ _
-				//  type   num  dist up
-				if( !haveFrame[frameInd] ) continue;
-
-				for( uint8_t r=0 ; !oke and r < ( 1 << 3 ) ; r ++ ){
-					if( i - ( r + 1 ) < 0 ) break;
-					if( prevFrames[frameInd].getPixel( i-( r + 1 ), j ) == currPixel ){
-
-						uint8_t type = 6;
-
-						uint8_t info = ( type << 5 );
-						info |= ( frameInd << 3 );
-						info |= r;
-
-						fout.write( (char*)&info, sizeof( info ) );
-						oke = true;
-					}
-				}
-				if( oke ) break;
-			}
-
-			if( oke ){
-				prev = currPixel;
-				continue;
-			}
-
-			for( uint8_t frameInd = 0 ; frameInd < 4 ; frameInd ++ ){
-				// 1 1 0 | _ _   _ _ _
-				//  type   num  dist left
-				if( !haveFrame[frameInd] ) continue;
-
-				for( uint8_t c=0 ; !oke and c < ( 1 << 3 )-1 ; c ++ ){
-					if( j - ( c + 1 ) < 0 ) break;
-					if( prevFrames[frameInd].getPixel( i, j - ( c + 1 ) ) == currPixel ){
-
-						uint8_t type = 7;
-
-						uint8_t info = ( type << 5 );
-						info |= ( frameInd << 3 );
-						info |= c;
-
-						fout.write( (char*)&info, sizeof( info ) );
-						oke = true;
-					}
-				}
-				if( oke ) break;
-			}
-
-			if( oke ){
-				prev = currPixel;
-				continue;
-			}
+			// TODO tva ne raboti mn
+//			for( uint8_t frameInd = 0 ; false and !oke and frameInd < NUM_PREV_FRAMES ; frameInd ++ ){
+//				// PREV FRAME OPERATIONS
+//				if( !haveFrame[frameInd] ) continue;
+//				for( uint8_t currInd = 0 ; !oke and currInd < 31 ; currInd ++ ){
+// 
+//					int currX = i + prevFrameDelta[currInd].first;
+//					int currY = j + prevFrameDelta[currInd].second;
+//
+//					if( currX < 0 || currX >= IMG_H ) continue;
+//					if( currY < 0 || currY >= IMG_W ) continue;
+//
+//					if( prevFrames[frameInd].getPixel( currX, currY ) == currPixel ){
+//
+//    					uint8_t type;
+//    					uint8_t infoInd;
+//    					if( currInd < 16 ){
+//							type = 6;
+//							infoInd = currInd;
+//						}else{
+//    						type = 7;
+//    						infoInd = currInd - 16;
+//    					}
+//    
+//    					uint8_t info = ( type << 5 );
+//						info |= ( frameInd << 4 );
+//    					info |= infoInd;
+//    					
+//    					fout.write( (char *)&info, sizeof( info ) );
+//    					oke = true;
+//    					break;
+//					}
+//				}
+//			}
+//
+//			if( oke ){
+//				prev = currPixel;
+//				continue;
+//			}
 
 			int8_t dr = prev.getR() - currPixel.getR();
 			int8_t dg = prev.getG() - currPixel.getG();
@@ -255,8 +265,37 @@ void encode( int numCurrFrame ){
 			int8_t dgr = dg - dr;
 			int8_t dgb = dg - db;
 
-			if( dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
-				uint8_t type = 2;
+  			if( dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
+  				uint8_t type = 2;
+  				uint8_t info = 0;
+  				info = ( type << 5 );
+  
+  				dg += 1;
+  				info |= ( dg << 3 );
+  
+  				dgr += 1;
+  				info |= ( dgr << 1 );
+  
+  				info |= dgb;
+  
+  				fout.write( (char *)&info, sizeof( info ) );
+  
+  				prev = currPixel;
+  				continue;
+  			}
+
+			if( !firstTime ){
+				Pixel currP = lastFrame.getPixel( i, j );
+				dr = currP.getR() - currPixel.getR();
+				dg = currP.getG() - currPixel.getG();
+				db = currP.getB() - currPixel.getB();
+
+				dgr = dg - dr;
+				dgb = dg - db;
+			}
+
+			if( !firstTime and dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
+				uint8_t type = 6;
 				uint8_t info = 0;
 				info = ( type << 5 );
 
@@ -273,7 +312,15 @@ void encode( int numCurrFrame ){
 				prev = currPixel;
 				continue;
 			}
-
+  
+    
+  			dr = prev.getR() - currPixel.getR();
+  			dg = prev.getG() - currPixel.getG();
+  			db = prev.getB() - currPixel.getB();
+  
+  			dgr = dg - dr;
+  			dgb = dg - db;
+  
 			if( dg >= -15 and dg <= 16 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
 				// diff
 				// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
@@ -297,6 +344,41 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
+			if( !firstTime ){
+				Pixel currP = lastFrame.getPixel( i, j );
+				dr = currP.getR() - currPixel.getR();
+				dg = currP.getG() - currPixel.getG();
+				db = currP.getB() - currPixel.getB();
+
+				dgr = dg - dr;
+				dgb = dg - db;
+			}
+
+
+			if( !firstTime and dg >= -15 and dg <= 15 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
+				// diff
+				// 0 1 0 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
+				uint8_t type = 7;
+				uint8_t info1 = 0;
+				info1 = ( type << 5 );
+				dg += 15;
+				info1 |= dg;
+
+				uint8_t info2 = 0;
+				dgr += 7;
+				info2 = ( dgr << 4 );
+
+				dgb += 7;
+				info2 |= dgb;
+
+				fout.write( (char * ) &info1, sizeof( info1 ) );
+				fout.write( (char * ) &info2, sizeof( info2 ) );
+
+				prev = currPixel;
+				continue;
+			}
+    
+
 			uint8_t infoType = 255;
 			uint8_t infoR = currPixel.getR();
 			uint8_t infoG = currPixel.getG();
@@ -307,10 +389,10 @@ void encode( int numCurrFrame ){
 			fout.write( (char *) &infoG, sizeof( infoG ) );
 			fout.write( (char *) &infoB, sizeof( infoB ) );
 
-			if( valHash[currHash].isZero() and numHash < modHash ){
-				valHash[ currHash ] = currPixel;
-				hashTable[ currHash ] = numHash ++;
-			}
+//			if( valHash[currHash].isZero() and numHash < modHash ){
+//				valHash[ currHash ] = currPixel;
+//				hashTable[ currHash ] = numHash ++;
+//			}
 
 
 			prev = currPixel;
@@ -324,30 +406,15 @@ void encode( int numCurrFrame ){
 
 	// max Diff = 255 * 3 * 1080 * 1920
 	// max Diff = 1586304000 = 1e9
-	bool setFrame = false;
-
+	
 	if( diff >= MAX_DIFF / 2 || !haveFrame[0] ){
 		prevFrames[0].setFrame( currFrame );
 		haveFrame[0] = true;
-		setFrame = true;
 
-		//std::cerr << " set 0 Frame " << std::endl;
-		haveFrame[2] = haveFrame[3] = false;
-	}else if( diff >= MAX_DIFF / 10 || !haveFrame[2] ){
-		prevFrames[2].setFrame( currFrame );
-		haveFrame[2] = true;
-		setFrame = true;
-		//std::cerr << " set 2 Frame " << std::endl;
-	}else if( diff >= MAX_DIFF / 50 || !haveFrame[3] ){
-		prevFrames[3].setFrame( currFrame );
-		haveFrame[3] = true;
-		setFrame = true;
-		//std::cerr << " set 3 Frame " << std::endl;
-	}
-
-	if( !setFrame and numCurrFrame % 7 == 0 ){
+		haveFrame[1] = false;
+	}else if( diff >= MAX_DIFF / 10 || !haveFrame[1] ){
 		prevFrames[1].setFrame( currFrame );
-		//std::cerr << " set 1 Frame " << std::endl;
+		haveFrame[1] = true;
 	}
 
 	lastFrame.setFrame( currFrame );
@@ -363,7 +430,7 @@ int main(){
 
 	std::srand( 69 );
 
-	int numFrames = 20;
+	int numFrames = 60;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
 	firstTime = true;

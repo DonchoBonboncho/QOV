@@ -19,7 +19,7 @@ int main (){
 			if( grig[i][j] ){
 				std::cout << " { " << i - mid << " , " << j - mid << " } ";
 				num ++;
-				if( num != 64 ) std::cout << " , ";
+				if( num != 32 ) std::cout << " , ";
 			}
 		}
 	}
