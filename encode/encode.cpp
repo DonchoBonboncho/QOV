@@ -5,14 +5,17 @@
  * }
 OPERATIONS:
 
-0 0 0 | _ _ _ _ _    - run
-0 0 1 | _ _ _ _ _ x2  - diff 1
-0 1 0 | _ _ _ _ _    - diff 2
-0 1 1 | _ _ _ _ _     - hash table ind
-1 0 1 | _ _ _ _ _    - new
-0 1 1 | _ _ _ _ _ x4  - new
-1 0 0 | _ _ _ _ _    - last frame 1
-1 0 1 | _ _ _ _ _	 - last frame 2
+0 0 0 | _ _ _ _ _		- curr frame run
+0 0 1 | _ _ _ _ _ x2	- diff 1
+0 1 0 | _ _ _ _ _		- diff 2
+0 1 1 | _ _ _ _ _		- last frame run
+1 1 1 1 1 1 1 1 ... x4	- new
+1 0 0 | _ _ _ _ _    - last frame
+1 0 1 | _ _ _ _ _	 - last frame
+
+1 0 1 | _ _ _ _ _    - last frames diff 1
+1 1 1 | _ _ _ _ _    - last frames diff 2
+
 1 0 1 | _ _ _ _ _    - prev frames 1
 1 1 1 | _ _ _ _ _    - prev frames 2
 
@@ -61,10 +64,17 @@ bool haveFrame[2];
 bool STOP = false;
 void encode( int numCurrFrame ){
 
-	std::string pathPref = "../frames/kubche/";
+	//std::string pathPref = "../frames/kubche/";
+	//std::string pathImgName = getFramNum( numCurrFrame, 4, 0 );
+	std::string pathPref = "../frames/randomNoice/";
 	std::string pathImgName = getFramNum( numCurrFrame, 4, 0 );
+	//std::string pathPref = "../frames/sameImage/";
+	//std::string pathImgName = getFramNum( numCurrFrame, 4, 0 );
+	//std::string pathPref = "../frames/kuche/";
+	//std::string pathImgName = getFramNum( numCurrFrame, 4, 0 );
 	//std::string pathPref = "../frames/animaciq1/";
 	//std::string pathImgName = getFramNum( numCurrFrame, 6, 99 );
+	
 	std::string pathSuff = ".bmp";
 
 	std::string path = pathPref + pathImgName + pathSuff;
@@ -218,45 +228,44 @@ void encode( int numCurrFrame ){
 				continue;
 			}
 
-			// TODO tva ne raboti mn
-//			for( uint8_t frameInd = 0 ; false and !oke and frameInd < NUM_PREV_FRAMES ; frameInd ++ ){
-//				// PREV FRAME OPERATIONS
-//				if( !haveFrame[frameInd] ) continue;
-//				for( uint8_t currInd = 0 ; !oke and currInd < 31 ; currInd ++ ){
-// 
-//					int currX = i + prevFrameDelta[currInd].first;
-//					int currY = j + prevFrameDelta[currInd].second;
-//
-//					if( currX < 0 || currX >= IMG_H ) continue;
-//					if( currY < 0 || currY >= IMG_W ) continue;
-//
-//					if( prevFrames[frameInd].getPixel( currX, currY ) == currPixel ){
-//
-//    					uint8_t type;
-//    					uint8_t infoInd;
-//    					if( currInd < 16 ){
-//							type = 6;
-//							infoInd = currInd;
-//						}else{
-//    						type = 7;
-//    						infoInd = currInd - 16;
-//    					}
-//    
-//    					uint8_t info = ( type << 5 );
-//						info |= ( frameInd << 4 );
-//    					info |= infoInd;
-//    					
-//    					fout.write( (char *)&info, sizeof( info ) );
-//    					oke = true;
-//    					break;
-//					}
-//				}
-//			}
-//
-//			if( oke ){
-//				prev = currPixel;
-//				continue;
-//			}
+    			for( uint8_t frameInd = 0 ; !oke and frameInd < NUM_PREV_FRAMES ; frameInd ++ ){
+    				// PREV FRAME OPERATIONS
+    				if( !haveFrame[frameInd] ) continue;
+    				for( uint8_t currInd = 0 ; !oke and currInd < 31 ; currInd ++ ){
+     
+    					int currX = i + prevFrameDelta[currInd].first;
+    					int currY = j + prevFrameDelta[currInd].second;
+    
+    					if( currX < 0 || currX >= IMG_H ) continue;
+    					if( currY < 0 || currY >= IMG_W ) continue;
+    
+    					if( prevFrames[frameInd].getPixel( currX, currY ) == currPixel ){
+    
+        					uint8_t type;
+        					uint8_t infoInd;
+        					if( currInd < 16 ){
+    							type = 6;
+    							infoInd = currInd;
+    						}else{
+        						type = 7;
+        						infoInd = currInd - 16;
+        					}
+        
+        					uint8_t info = ( type << 5 );
+    						info |= ( frameInd << 4 );
+        					info |= infoInd;
+        					
+        					fout.write( (char *)&info, sizeof( info ) );
+        					oke = true;
+        					break;
+    					}
+    				}
+    			}
+  
+  			if( oke ){
+  				prev = currPixel;
+  				continue;
+  			}
 
 			int8_t dr = prev.getR() - currPixel.getR();
 			int8_t dg = prev.getG() - currPixel.getG();
@@ -265,37 +274,8 @@ void encode( int numCurrFrame ){
 			int8_t dgr = dg - dr;
 			int8_t dgb = dg - db;
 
-  			if( dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
-  				uint8_t type = 2;
-  				uint8_t info = 0;
-  				info = ( type << 5 );
-  
-  				dg += 1;
-  				info |= ( dg << 3 );
-  
-  				dgr += 1;
-  				info |= ( dgr << 1 );
-  
-  				info |= dgb;
-  
-  				fout.write( (char *)&info, sizeof( info ) );
-  
-  				prev = currPixel;
-  				continue;
-  			}
-
-			if( !firstTime ){
-				Pixel currP = lastFrame.getPixel( i, j );
-				dr = currP.getR() - currPixel.getR();
-				dg = currP.getG() - currPixel.getG();
-				db = currP.getB() - currPixel.getB();
-
-				dgr = dg - dr;
-				dgb = dg - db;
-			}
-
-			if( !firstTime and dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
-				uint8_t type = 6;
+			if( dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
+				uint8_t type = 2;
 				uint8_t info = 0;
 				info = ( type << 5 );
 
@@ -313,71 +293,100 @@ void encode( int numCurrFrame ){
 				continue;
 			}
   
-    
-  			dr = prev.getR() - currPixel.getR();
-  			dg = prev.getG() - currPixel.getG();
-  			db = prev.getB() - currPixel.getB();
-  
-  			dgr = dg - dr;
-  			dgb = dg - db;
-  
-			if( dg >= -15 and dg <= 16 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
-				// diff
-				// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
-				uint8_t type = 1;
-				uint8_t info1 = 0;
-				info1 = ( type << 5 );
-				dg += 15;
-				info1 |= dg;
+//  			if( !firstTime ){
+//  				Pixel currP = lastFrame.getPixel( i, j );
+//  				dr = currP.getR() - currPixel.getR();
+//  				dg = currP.getG() - currPixel.getG();
+//  				db = currP.getB() - currPixel.getB();
+//  
+//  				dgr = dg - dr;
+//  				dgb = dg - db;
+//  			}
+//  
+//  			if( !firstTime and dg >= -1 and dg <= 2 && dgr >= -1 and dgr <= 2 && dgb >= 0 and dgb <= 1 ){
+//  				uint8_t type = 6;
+//  				uint8_t info = 0;
+//  				info = ( type << 5 );
+//  
+//  				dg += 1;
+//  				info |= ( dg << 3 );
+//  
+//  				dgr += 1;
+//  				info |= ( dgr << 1 );
+//  
+//  				info |= dgb;
+//  
+//  				fout.write( (char *)&info, sizeof( info ) );
+//  
+//  				prev = currPixel;
+//  				continue;
+//  			}
+//    
+//      
+//    			dr = prev.getR() - currPixel.getR();
+//    			dg = prev.getG() - currPixel.getG();
+//    			db = prev.getB() - currPixel.getB();
+//    
+//    			dgr = dg - dr;
+//    			dgb = dg - db;
+//    
+    		if( dg >= -15 and dg <= 16 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
+    			// diff
+    			// 0 0 1 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
+    			uint8_t type = 1;
+    			uint8_t info1 = 0;
+    			info1 = ( type << 5 );
+    			dg += 15;
+    			info1 |= dg;
 
-				uint8_t info2 = 0;
-				dgr += 7;
-				info2 = ( dgr << 4 );
+    			uint8_t info2 = 0;
+    			dgr += 7;
+    			info2 = ( dgr << 4 );
 
-				dgb += 7;
-				info2 |= dgb;
+    			dgb += 7;
+    			info2 |= dgb;
 
-				fout.write( (char * ) &info1, sizeof( info1 ) );
-				fout.write( (char * ) &info2, sizeof( info2 ) );
+    			fout.write( (char * ) &info1, sizeof( info1 ) );
+    			fout.write( (char * ) &info2, sizeof( info2 ) );
 
-				prev = currPixel;
-				continue;
-			}
+    			prev = currPixel;
+    			continue;
+    		}
 
-			if( !firstTime ){
-				Pixel currP = lastFrame.getPixel( i, j );
-				dr = currP.getR() - currPixel.getR();
-				dg = currP.getG() - currPixel.getG();
-				db = currP.getB() - currPixel.getB();
-
-				dgr = dg - dr;
-				dgb = dg - db;
-			}
-
-
-			if( !firstTime and dg >= -15 and dg <= 15 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
-				// diff
-				// 0 1 0 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
-				uint8_t type = 7;
-				uint8_t info1 = 0;
-				info1 = ( type << 5 );
-				dg += 15;
-				info1 |= dg;
-
-				uint8_t info2 = 0;
-				dgr += 7;
-				info2 = ( dgr << 4 );
-
-				dgb += 7;
-				info2 |= dgb;
-
-				fout.write( (char * ) &info1, sizeof( info1 ) );
-				fout.write( (char * ) &info2, sizeof( info2 ) );
-
-				prev = currPixel;
-				continue;
-			}
-    
+//  			if( !firstTime ){
+//  				Pixel currP = lastFrame.getPixel( i, j );
+//  				dr = currP.getR() - currPixel.getR();
+//  				dg = currP.getG() - currPixel.getG();
+//  				db = currP.getB() - currPixel.getB();
+//  
+//  				dgr = dg - dr;
+//  				dgb = dg - db;
+//  			}
+//  
+//  
+//  			if( !firstTime and dg >= -15 and dg <= 15 && dgr >= -7 and dgr <= 8 && dgb >= -7 and dgb <= 8 ){
+//  				// diff
+//  				// 0 1 0 | _ _ _ _ _  . _ _ _ _ | _ _ _ _
+//  				uint8_t type = 7;
+//  				uint8_t info1 = 0;
+//  				info1 = ( type << 5 );
+//  				dg += 15;
+//  				info1 |= dg;
+//  
+//  				uint8_t info2 = 0;
+//  				dgr += 7;
+//  				info2 = ( dgr << 4 );
+//  
+//  				dgb += 7;
+//  				info2 |= dgb;
+//  
+//  				fout.write( (char * ) &info1, sizeof( info1 ) );
+//  				fout.write( (char * ) &info2, sizeof( info2 ) );
+//  
+//  				prev = currPixel;
+//  				continue;
+//  			}
+//      
 
 			uint8_t infoType = 255;
 			uint8_t infoR = currPixel.getR();
@@ -388,12 +397,6 @@ void encode( int numCurrFrame ){
 			fout.write( (char *) &infoR, sizeof( infoR ) );
 			fout.write( (char *) &infoG, sizeof( infoG ) );
 			fout.write( (char *) &infoB, sizeof( infoB ) );
-
-//			if( valHash[currHash].isZero() and numHash < modHash ){
-//				valHash[ currHash ] = currPixel;
-//				hashTable[ currHash ] = numHash ++;
-//			}
-
 
 			prev = currPixel;
 		}
@@ -430,7 +433,7 @@ int main(){
 
 	std::srand( 69 );
 
-	int numFrames = 60;
+	int numFrames = 420;
 	fout.write( (char*)&numFrames, sizeof( numFrames ) );
 
 	firstTime = true;

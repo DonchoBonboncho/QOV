@@ -7,6 +7,8 @@ add_compile_options(-Wall -Wextra -Wpedantic -O2)
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 add_executable( encode.exe ./encode/encode.cpp )
 add_executable( decode.exe ./decode/decode.cpp )
+add_executable( test.exe ./build/testData/bitmap/sameImage/test.cpp )
 target_link_libraries( encode.exe ${OpenCV_LIBS} )
 target_link_libraries( decode.exe ${OpenCV_LIBS} )
+target_link_libraries( test.exe ${OpenCV_LIBS} )
 
