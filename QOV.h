@@ -1,136 +1,45 @@
-#include <iostream>
-#include <bits/stdc++.h>
-#include <algorithm>
+#ifndef QOV_H
+#define QOV_H
 
-class Pixel{
-	private:
+#include <cstddef>
+#include <cstdint>
+#include <iosfwd>
+#include <vector>
 
-	int r;
-	int g;
-	int b;
+// QOV1 stores lossless, 8-bit RGB video frames. This API accepts pixels in
+// row-major RGB order. The wire format is documented in README.md.
+namespace qov {
 
-	public:
-
-	Pixel( ){
-		r = b = g = 0;
-	}
-  
-  	Pixel( int _r, int _g, int _b ){
-  		r = _r;
-  		g = _g;
-  		b = _b;
-  	}
-
-	// setters
-	void setRGB( int _r, int _g, int _b ){
-		r = _r;
-		g = _g;
-		b = _b;
-	}
-
-	void setPixel( const Pixel& a ){
-		r = a.r;
-		g = a.g;
-		b = a.b;
-	}
-
-	void setR( int _r ){
-		r = _r;
-	}
-
-	void setG( int _g ){
-		g = _g;
-	}
-	void setB( int _b ){
-		b = _b;
-	}
-
-	// getters
-	int getR( ) const{
-		return r;
-	}
-
-	int getG( ) const{
-		return g;
-	}
-
-	int getB( ) const{
-		return b;
-	}
-
-	bool operator ==( const Pixel& currP ){
-		if( r != currP.r ) return false;
-		if( g != currP.g ) return false;
-		if( b != currP.b ) return false;
-		return true;
-	}
-
-	void print( std::ostream& os )const{
-		os << r << " " << g << " " << b << std::endl;
-	}
-
+struct Header {
+    std::uint32_t width = 0;
+    std::uint32_t height = 0;
+    std::uint32_t frames = 0;
+    std::uint32_t fps_num = 30;
+    std::uint32_t fps_den = 1;
 };
 
-class Frame{
-	private:
+// Protect decoders from unreasonable allocations, including malformed inputs.
+constexpr std::size_t kMaxPixels = 64u * 1024u * 1024u;
+constexpr std::uint32_t kMaxFrames = 1'000'000u;
 
-	int ind;
-	int FrameH, FrameW;
-	Pixel** pixels;
+std::size_t frame_bytes(const Header& header);
+void write_header(std::ostream& output, const Header& header);
+Header read_header(std::istream& input);
 
-	public:
+// previous_frame is null on frame zero; otherwise it must contain exactly one
+// decoded frame. Each frame has an independently reset pixel-index cache.
+std::vector<std::uint8_t> encode_frame(
+    const std::vector<std::uint8_t>& rgb,
+    const std::vector<std::uint8_t>* previous_frame);
 
-	Frame( int H, int W ){
-		FrameH = H;
-		FrameW = W;
-		init();
-	}
+std::vector<std::uint8_t> decode_frame(
+    const std::vector<std::uint8_t>& encoded, std::size_t pixel_count,
+    const std::vector<std::uint8_t>* previous_frame);
 
-	Pixel getPixel( int x, int y ) const{
-		return pixels[x][y];
-	}
+// Frame sizes are little-endian uint32 followed by exactly that many bytes.
+void write_frame(std::ostream& output, const std::vector<std::uint8_t>& encoded);
+std::vector<std::uint8_t> read_frame(std::istream& input, std::size_t pixel_count);
+void require_eof(std::istream& input);
 
-	void init( ){
-		pixels = new Pixel* [FrameH];
-		for( int i=0 ; i < FrameH ; i++ ) pixels[i] = new Pixel [FrameW];
-	}
-
-	void setPixelPixel( const Pixel& p, int x, int y ){
-		pixels[x][y] = p;
-	}
-
-	void setPixelRGB( int r, int b, int g, int x, int y ){
-		pixels[x][y].setRGB( r, g, b );
-	}
-
-	~Frame(){
-		for( int i=0 ; i<FrameH ; i++ ){
-			delete pixels[i];
-		}
-		delete[] pixels;
-	}
-
-};
-
-std::string inBinary( int curr ){
-	std::string nas = "";
-	int cp = curr;
-	while( cp ){
-		nas += (char)('0' + (cp&1 ) );
-		cp >>= 1;
-	}
-
-	while( nas.size() < 8 ) nas = nas + "0";
-	
-	std::reverse( nas.begin(), nas.end() );
-	return nas;
-}
-
-
-std::string getFramNum( int numFrame , int sz = 4 ){
-
-	std::string nas = std::to_string( numFrame );
-	while( nas.size() < sz ) nas = "0" + nas;
-
-	return nas;
-}
+} // namespace qov
+#endif
