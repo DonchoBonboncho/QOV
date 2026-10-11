@@ -1,133 +1,43 @@
 #include "../QOV.h"
-// frame and pixel classes + ...
+#include "../cli/image_io.h"
 
-#include <opencv2/core.hpp>
-#include <opencv2/core/matx.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/highgui.hpp>
-#include <iostream>
+#include <filesystem>
 #include <fstream>
-#include <chrono>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
-using namespace cv;
-
-#define out(x) #x << " = " << x << "  "
-
-const int modHash = 32;
-
-int hashTable[modHash];
-Pixel hashVal[modHash];
-
-bool vizHash[modHash];
-int valHashR[modHash];
-int valHashG[modHash];
-int valHashB[modHash];
-
-int main(){
-
-#ifdef TIME
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-#endif
-
-	std::ifstream fin( "encodeBytes.dat", std::ios::out | std::ios::binary );
-	if( !fin ){
-		std::cerr << " nqma otvarqne " << std::endl;
-		return 1;
-	}
-
-	int currH, currW;
-	fin.read((char *)&currH, sizeof( currH ) );
-	fin.read((char *)&currW, sizeof( currW ) );
-
-	int runNum = 0;
-	int numHash = 0;
-	Pixel prevPixel( 1234, 1234, 1234 );
-	for( int i=0 ; i < currH ; i++ ){
-		for( int j=0 ; j < currW ; j++ ){
-
-			Pixel newPixel;
-
-			if( runNum ){
-				prevPixel.print( std::cout );
-
-				runNum --;
-				continue;
-			}
-
-			int currR, currB, currG;
-
-			int info;
-			fin.read( (char*) &info, sizeof( info ) );
-
-			int cpInfo = info;
-			int type = cpInfo >> 5;
-			if( type == 5 ){
-				runNum = info & ( ( 1 << 5 ) -1 ); // last 5 bits
-				prevPixel.print( std::cout );
-				runNum --;
-				continue;
-			}
-			if( type == 1 ){
-				int dr = info & ( ( 1 << 5 ) -1 );
-				dr -= 15;
-				newPixel.setR( prevPixel.getR() - dr );
-
-				int info2;
-				fin.read( (char*) &info2, sizeof( info2 ) );
-
-				int dg = ( info2 >> 4 );
-				dg -= 7;
-				newPixel.setG( prevPixel.getG() - dg );
-
-				int db = info2 & ( ( 1 << 4 ) -1 );
-				db -= 7;
-				newPixel.setB( prevPixel.getB() - db );
-			}
-				
-			if( type == 2 ){
-				int currHashInd =  info & ( ( 1 << 5 ) -1 );
-				newPixel.setPixel( hashVal[currHashInd] );
-			}
-
-			if( type == 3 ){
-
-				int _r, _g, _b;
-				fin.read( (char*) &_r, sizeof( _r ) );
-				newPixel.setR( _r );
-				
-				fin.read( (char*) &_g, sizeof( _g ) );
-				newPixel.setG( _g );
-
-				fin.read( (char*) &_b, sizeof( _b ) );
-				newPixel.setB( _b );
-
-				int currHash = ( newPixel.getR() * 3 + newPixel.getG() * 5 + newPixel.getB() * 7 ) % modHash;
-				if( !vizHash[currHash] and numHash < modHash ){
-
-					vizHash[currHash] = true;
-					hashVal[numHash].setPixel( newPixel );
-					hashTable[currHash] = numHash ++;
-				}
-
-			}
-
-			newPixel.print( std::cout );
-
-			prevPixel.setPixel( newPixel );
-		}
-	}
-
-	fin.close();
-	if( !fin.good() ){
-		std::cerr << " bruhmomento " << std::endl;
-		return 1;
-	}
-
-
-#ifdef TIME
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cerr << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
-#endif
-
-    return 0;
+int main(int argc, char** argv) {
+    if (argc != 3) {
+        std::cerr << "Usage: qov-decode INPUT.qov OUTPUT_DIRECTORY\n";
+        return 2;
+    }
+    try {
+        std::ifstream in(argv[1], std::ios::binary);
+        if (!in) throw std::runtime_error("Cannot open compressed input");
+        const auto header = qov::read_header(in);
+        const std::size_t pixels = qov::frame_bytes(header) / 3;
+        std::filesystem::create_directories(argv[2]);
+        std::vector<std::uint8_t> previous;
+        for (std::uint32_t i = 0; i < header.frames; ++i) {
+            const auto compressed = qov::read_frame(in, pixels);
+            auto raw = qov::decode_frame(compressed, pixels, previous.empty() ? nullptr : &previous);
+            std::ostringstream name;
+            name << "frame" << std::setw(6) << std::setfill('0') << (i + 1) << ".ppm";
+            const auto filename = (std::filesystem::path(argv[2]) / name.str()).string();
+            qov::write_ppm(filename, {header.width, header.height, raw});
+            previous = std::move(raw);
+        }
+        qov::require_eof(in);
+        std::cout << "Decoded " << header.frames << " RGB frames at " << header.width
+                  << 'x' << header.height << ", fps=" << header.fps_num << '/'
+                  << header.fps_den << '\n';
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "qov-decode: " << e.what() << '\n';
+        return 1;
+    }
 }

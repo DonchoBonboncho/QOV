@@ -1,1 +1,6 @@
 build/
+cmake-build-*/
+*.qov
+*.o
+*.obj
+*.exe
